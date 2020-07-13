@@ -35,7 +35,7 @@ Untuk memasuki local virtual environment di windows
 Untuk menjalankan proyek, perlu melakukan instalasi requirements modul/library terlebih dahulu. Pastikan sudah ada file ``requirements.txt`` dalam proyek
 
 ```bash
-pip instal -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -51,3 +51,7 @@ Untuk melakukan linter testing:
 pylint [src_dir|*optional]
 ```
 Untuk mengubah source test untuk linter bisa dengan mengubah file ``pytest.ini``
+
+## URLs
+
+[Styling guide PEP8 pylint](https://www.python.org/dev/peps/pep-0008/)
