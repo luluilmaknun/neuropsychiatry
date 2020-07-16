@@ -12,7 +12,7 @@ class SettingsFrame(tk.Toplevel):
         lab = tk.Label(self.root, text="Number of Condition")
         self.ent = tk.Spinbox(self.root, from_=0, to=20)
         self.but = tk.Button(self.root, text="Set",
-                        command=self.setting_conditions)
+                             command=self.setting_conditions)
         lab.pack(side='left')
         self.ent.pack(side='left')
         self.but.pack(side='left')

@@ -18,9 +18,6 @@ class MainFrame(tk.Frame):
                                       command=self.open_settings)
         self.btn_settings.pack(anchor=tk.NW)
 
-    def increase_counter(self):
-        self.trial_counter.set(self.trial_counter.get() + 1)
-
     def open_settings(self):
         self.settings_frame = tk.Toplevel(self.root)
         self.app = SettingsFrame(self.settings_frame)
