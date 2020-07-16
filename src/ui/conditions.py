@@ -4,7 +4,6 @@ import tkinter as tk
 class ConditionsFrame(tk.Toplevel):
     def __init__(self, root, num_of_condition):
         self.root = root
-        self.frame = tk.Frame(self.root, width=360, height=360)
         self.root.title("Conditions")
 
         fields = ['Condition', 'Delay', 'Perturbation',
