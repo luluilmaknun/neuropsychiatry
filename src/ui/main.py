@@ -1,4 +1,5 @@
 import tkinter as tk
+from src.ui.settings import SettingsFrame
 
 
 class MainFrame(tk.Frame):
@@ -11,6 +12,18 @@ class MainFrame(tk.Frame):
         w = self.root.winfo_screenwidth()
         h = self.root.winfo_screenheight()
         self.root.geometry("%dx%d+0+0" % (w, h))
+
+        # BUTTON "Change Settings"
+        self.btn_settings = tk.Button(self, text="Change Settings",
+                                      command=self.open_settings)
+        self.btn_settings.pack(anchor=tk.NW)
+
+    def increase_counter(self):
+        self.trial_counter.set(self.trial_counter.get() + 1)
+
+    def open_settings(self):
+        self.settings_frame = tk.Toplevel(self.root)
+        self.app = SettingsFrame(self.settings_frame)
 
 
 def main():
