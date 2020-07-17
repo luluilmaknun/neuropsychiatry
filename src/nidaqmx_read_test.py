@@ -1,5 +1,5 @@
-import nidaqmx
 from tkinter import *
+import nidaqmx
 
 master = Tk()
 master.minsize(width=400, height=400)
