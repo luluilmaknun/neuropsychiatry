@@ -26,4 +26,5 @@ build:
   script:
     - pyinstaller --onedir --windowed src/main.py
   artifacts:
-    - build
+    paths:
+      - public
