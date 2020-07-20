@@ -9,6 +9,7 @@ master.minsize(width=400, height=400)
 w = tk.Label(master)
 w.pack()
 
+
 def run():
     """
     function to read
@@ -27,11 +28,13 @@ def run():
             nidaqmx.constants.Edge.RISING,
             nidaqmx.constants.AcquisitionType.CONTINUOUS,
             0)
-        task.in_stream.over_write = nidaqmx.constants.OverwriteMode.OVERWRITE_UNREAD_SAMPLES
+        constant_overwrite = nidaqmx.constants.OverwriteMode
+        task.in_stream.over_write = constant_overwrite.OVERWRITE_UNREAD_SAMPLES
         print('1 Channel 1 Sample Read: ')
         data = task.read()
-        w['text'] = '%.2f' % data #said sensor value
+        w['text'] = '%.2f' % data
     master.after(1000, run)
 
-run() # run the function once.
+
+run()
 master.mainloop()
