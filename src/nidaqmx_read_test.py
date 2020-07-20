@@ -1,9 +1,9 @@
 import tkinter as tk
 import nidaqmx
 
-master = Tk()
+master = tk.Tk()
 master.minsize(width=400, height=400)
-w = Label(master) #shows as text in the window
+w = tk.Label(master) #shows as text in the window
 w.pack() #organizes widgets in blocks before placing them in the parent.   
 
 def run():
