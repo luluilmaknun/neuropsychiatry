@@ -7,16 +7,23 @@ before_script:
 stages:
   - Static Analysis
   - Test
+  - Build
 
 pylint:
   stage: Static Analysis
   allow_failure: false
   script:
-  - pylint src/*.py
-  - flake8 src/*.py --statistics --count
+    - pylint src/*.py
+    - flake8 src/*.py --statistics --count
 
 pytest:
   stage: Test
   script:
-  - pytest
+    - pytest
 
+build:
+  stage: Build
+  script:
+    - pyinstaller --onedir --windowed src/main.py
+  artifacts:
+    - build
