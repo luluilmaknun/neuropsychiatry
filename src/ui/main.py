@@ -3,6 +3,7 @@ import tkinter.filedialog as tk_fd
 from os.path import expanduser
 
 from src.ui.settings import SettingsFrame
+from src.ui.playground import Playground
 
 
 class MainFrame(tk.Frame):
@@ -13,9 +14,9 @@ class MainFrame(tk.Frame):
         self.root.title("Neuropsikiatri")
 
         # Set MainFrame width and height based on screen size
-        w = self.root.winfo_screenwidth()
-        h = self.root.winfo_screenheight()
-        self.root.geometry("%dx%d+0+0" % (w, h))
+        self.w = self.root.winfo_screenwidth()
+        self.h = self.root.winfo_screenheight()
+        self.root.geometry("%dx%d+0+0" % (self.w, self.h))
 
         # Default Settings Conditions on first open
         self.settings = {
@@ -38,7 +39,7 @@ class MainFrame(tk.Frame):
 
         # Init elements frame
         self.init_elements()
-        self.init_playground(h)
+        self.init_playground(self.h)
 
     def init_elements(self):
         # FRAMING
@@ -113,8 +114,7 @@ class MainFrame(tk.Frame):
         self.experiment_number_entry.pack(side='left', padx=1)
 
     def init_playground(self, size):
-        self.playground = tk.Canvas(self.root, height=size, width=size, bg='black')
-        self.playground.pack(anchor=tk.CENTER)
+        self.playground = Playground(self.root, height=size, width=size, bg='black')
 
     def increase_counter(self, counter='trial'):
         if counter == 'trial':
