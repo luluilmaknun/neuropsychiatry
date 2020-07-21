@@ -12,10 +12,35 @@ class MainFrame(tk.Frame):
         self.root = root
         self.root.title("Neuropsikiatri")
 
+        # Set MainFrame width and height based on screen size
         w = self.root.winfo_screenwidth()
         h = self.root.winfo_screenheight()
         self.root.geometry("%dx%d+0+0" % (w, h))
 
+        # Default Settings Conditions on first open
+        self.settings = {
+            'num_of_conditions': 1,
+            'num_of_trials': 10,
+            'length_of_trial': 10,
+            'size_cursor_target': 30,
+            'conditions': [
+                {
+                    'condition': 1,
+                    'delay': 100,
+                    'perturbation': 5,
+                    'cursor_pert_size': 5,
+                    'target_pert_size': 5,
+                    'visibility_cursor': 1,
+                    'visibility_target': 0,
+                }
+            ],
+        }
+
+        # Init elements frame
+        self.init_elements()
+        self.init_playground(h)
+
+    def init_elements(self):
         # FRAMING
         self.left_frame = tk.Frame(self.root)
         self.left_frame.pack(side='left', anchor=tk.W, padx=20, pady=20, fill=tk.BOTH, expand=True)
@@ -27,12 +52,8 @@ class MainFrame(tk.Frame):
                                       command=self.open_settings)
         self.btn_settings.pack(anchor=tk.NW)
 
-        # PLAYGROUND
-        self.playground = tk.Canvas(self.root, height=h, width=h, bg='black')
-        self.playground.pack(anchor=tk.CENTER)
-
         # SIDE PANEL
-        ## Record Icon
+        # Record Icon
         tk.Label(self.right_frame, text="Recording", font=("Arial", 21)) \
             .grid(row=0, column=0, sticky=tk.NW, pady=20, padx=15)
         self.record_canvas = tk.Canvas(self.right_frame, width=60, height=60)
@@ -42,7 +63,7 @@ class MainFrame(tk.Frame):
         self.record_icon_in = self.record_canvas.create_oval(15, 15, 45, 45,
                                                              fill="red", outline="red")
 
-        ## Trial Counter
+        # Trial Counter
         tk.Label(self.right_frame, text="Trial counter", font=("Arial", 16)) \
             .grid(row=1, column=0, sticky=tk.NW, pady=15, padx=15)
         self.trial_counter = tk.IntVar()
@@ -51,7 +72,7 @@ class MainFrame(tk.Frame):
                                             font=("Arial", 19))
         self.trial_counter_label.grid(row=1, column=1, sticky=tk.W)
 
-        ## Sample Counter
+        # Sample Counter
         tk.Label(self.right_frame, text="Sample counter", font=("Arial", 12)) \
             .grid(row=2, column=0, sticky=tk.NW, pady=15, padx=15)
         self.sample_counter = tk.IntVar()
@@ -60,18 +81,18 @@ class MainFrame(tk.Frame):
                                              font=("Arial", 15))
         self.sample_counter_label.grid(row=2, column=1, sticky=tk.W)
 
-        ## BUTTON STOP & ZERO
+        # BUTTON STOP & ZERO
         self.button_frame = tk.Frame(self.right_frame)
         self.button_frame.grid(columnspan=2, sticky=tk.E)
         tk.Button(self.button_frame, text="Stop", width=10, font=("Arial", 16)).pack(fill=tk.BOTH, expand=True)
         tk.Button(self.button_frame, text="Zero", width=10, font=("Arial", 16)).pack(fill=tk.BOTH, expand=True)
 
-        ## RADIOBUTTON RECORD
+        # RADIOBUTTON RECORD
         self.record_flag = tk.BooleanVar()
         tk.Checkbutton(self.button_frame, text="Record", var=self.record_flag, font=("Arial", 16),
                        onvalue=True, offvalue=False).pack()
 
-        ## FILE MANAGER
+        # FILE MANAGER
         self.file_frame = tk.Frame(self.right_frame)
         self.file_frame.grid(columnspan=2, sticky=tk.E)
         self.record_dir = tk.StringVar()
@@ -91,6 +112,10 @@ class MainFrame(tk.Frame):
                                                 textvariable=self.experiment_number)
         self.experiment_number_entry.pack(side='left', padx=1)
 
+    def init_playground(self, size):
+        self.playground = tk.Canvas(self.root, height=size, width=size, bg='black')
+        self.playground.pack(anchor=tk.CENTER)
+
     def increase_counter(self, counter='trial'):
         if counter == 'trial':
             self.trial_counter.set(self.trial_counter.get() + 1)
@@ -101,8 +126,10 @@ class MainFrame(tk.Frame):
         self.record_dir.set(tk_fd.askdirectory())
 
     def open_settings(self):
-        self.settings_frame = tk.Toplevel(self.root)
-        self.app = SettingsFrame(self.settings_frame)
+        self.top_level = tk.Toplevel(self.root)
+        self.settings = SettingsFrame(self.top_level, self.settings).waiting()
+        print(self.settings)
+
 
 
 def main():
