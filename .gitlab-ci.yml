@@ -27,4 +27,4 @@ build:
     - pyinstaller --onedir --windowed src/main.py
   artifacts:
     paths:
-      - src/dist/
+      - dist
