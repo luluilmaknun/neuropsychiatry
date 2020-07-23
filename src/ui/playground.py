@@ -1,4 +1,5 @@
 import tkinter as tk
+from math import sin, pi
 
 from src.ui.box import Box
 
@@ -9,11 +10,25 @@ class Playground(tk.Canvas):
         self.pack(anchor=tk.CENTER)
         self.height = kwargs['height']
         self.width = kwargs['width']
-        self.center_y = (self.winfo_height()/2) * self.height
-        self.center_x = (self.winfo_width()/2) * self.width
+        self.center_y = self.height / 2
+        self.center_x = self.width / 2
+        self.STATIC_SIZE_H = 360
 
-        self.cursor = Box(self, 'yellow', 100)
-        self.target = Box(self, 'red', 100)
+        self.clock_freq = 50
 
-        self.cursor.move(self.center_x, self.center_y)
-        self.target.move(self.center_x, self.center_y)
+    def create_boxes(self, size):
+        self.size_cursor_target = size
+        self.cursor = Box(self, 'yellow', size)
+        self.target = Box(self, 'red', size)
+
+        self.cursor.move(self.center_x - (size/2), self.center_y - (size/2))
+        self.target.move(self.center_x - (size/2), self.center_y - (size/2))
+
+    def move_target(self, amp, freq, phase_time):
+        pos_y = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
+        if pos_y > 0:
+            pos_y = pos_y * ((self.height / 2) - self.size_cursor_target)
+        else:
+            pos_y = pos_y * (self.height / 2)
+
+        self.target.move(0, pos_y + self.center_y)

@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.filedialog as tk_fd
 from os.path import expanduser
+import time
 
 from src.ui.settings import SettingsFrame
 from src.ui.playground import Playground
@@ -9,7 +10,7 @@ from src.ui.playground import Playground
 class MainFrame(tk.Frame):
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, *kwargs)
-        self.pack()
+        self.pack(anchor=tk.CENTER, fill=tk.Y)
         self.root = root
         self.root.title("Neuropsikiatri")
 
@@ -39,7 +40,9 @@ class MainFrame(tk.Frame):
 
         # Init elements frame
         self.init_elements()
-        self.init_playground(self.h)
+        self.init_playground(self.h * 0.8)
+        self.update()
+        self.start(1, 1, 0.3, 100)
 
     def init_elements(self):
         # FRAMING
@@ -115,6 +118,7 @@ class MainFrame(tk.Frame):
 
     def init_playground(self, size):
         self.playground = Playground(self.root, height=size, width=size, bg='black')
+        self.playground.create_boxes(100)
 
     def increase_counter(self, counter='trial'):
         if counter == 'trial':
@@ -130,7 +134,11 @@ class MainFrame(tk.Frame):
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
         print(self.settings)
 
-
+    def start(self, amp, freq, pause, phase):
+        for i in range(phase):
+            self.playground.move_target(amp, freq, i+1)
+            time.sleep(pause)   # Set time here
+            self.update()
 
 def main():
     root = tk.Tk()

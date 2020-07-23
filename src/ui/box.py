@@ -6,8 +6,22 @@ class Box():
         self.canvas = canvas
         self.size = size
         self.rectangle = self.canvas.create_rectangle(0, 0, 0+size, 0+size, fill=color)
+        self.x = 0
+        self.y = 0
 
     def move(self, x, y):
-        cord_x = x - (self.size/2)
-        cord_y = y - (self.size/2)
-        self.canvas.move(self.rectangle, cord_x, cord_y)
+        # move in 1 dimension
+        if x == 0:
+            offset_x = 0
+        else:
+            offset_x = x - self.x
+
+        if y == 0:
+            offset_y = 0
+        else:
+            offset_y = y - self.y
+
+        self.x = x
+        self.y = y
+
+        self.canvas.move(self.rectangle, offset_x, offset_y)
