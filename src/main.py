@@ -5,7 +5,7 @@ import tkinter as tk
 import numpy as np
 import math
 import nidaqmx
-import src.constants as constants
+import constants as constants
 
 # Window and nidaqmx task variable
 is_zeroed = False  # button zero click if clicked, unknown functionality?
@@ -31,14 +31,15 @@ norm_score = 0
 # trial variable
 trial_list = {
     'target_frequency': 0.4,
-    'target_amplitude': 0.1,
-    'cursor_frequency': 0,
-    'cursor_amplitude': 0,
+    'target_amplitude': 1,
+    'cursor_frequency': 0.4,
+    'cursor_amplitude': 1,
     'delay': 0,
+    'condition':0
 }
 phase_time = 0  # what is this?
-current_phase = 0   # what is this?
-next_phase_time = 0 # what is this?
+current_phase = 1   # what is this?
+next_phase_time = 100 # what is this?
 number_of_output_data = 9
 output_data = [0] * number_of_output_data
 
@@ -76,7 +77,8 @@ def init_new_phase():
     phase_time = 0
 
     if current_phase == constants.START_PHASE:
-        pass # init trial
+        next_phase_time = 100 #temp
+        # init trial
     elif current_phase == constants.TRACK_PHASE:
         is_target_moved == True
         # make something (in)visible
@@ -96,6 +98,11 @@ def run():
     """
     function to read
     """
+    global is_zeroed
+    global current_phase, phase_time, next_phase_time
+    global pertubation, delay_pointer
+    global current_score, total_score, score_count
+
     data = task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
     channel_read_value[0] = sum(data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
     channel_read_value[1] = sum(data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
@@ -106,12 +113,13 @@ def run():
     cursor_position_data_buffer[delay_pointer] = (channel_read_value[0] - channel_zero_button_value[0]) * constants.CURSOR_SCALE - 1
     if not is_zeroed:
         channel_zero_button_value[0] = channel_read_value[0]
-        zeroed = True
+        is_zeroed = True
 
     cursor_position_data = cursor_position_data_buffer[((delay_pointer + constants.DELAY_BUFFER_LEN - trial_list["delay"] * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)]
     if abs(cursor_position_data) > 2000:
         cursor_position_data = np.sign(cursor_position_data) * 2000
     phase_time += 1
+
     if phase_time == next_phase_time:
         init_new_phase()
         
