@@ -42,14 +42,15 @@ class MainFrame(tk.Frame):
         self.init_elements()
         self.init_playground(self.h * 0.8)
         self.update()
-        self.start(1, 1, 0.3, 100)
+        self.start(1, 1, 0.1, 100)
 
     def init_elements(self):
         # FRAMING
         self.left_frame = tk.Frame(self.root)
-        self.left_frame.pack(side='left', anchor=tk.W, padx=20, pady=20, fill=tk.BOTH, expand=True)
+        pad = 0.1 * self.h
+        self.left_frame.pack(side='left', anchor=tk.W, padx=30, pady=pad, fill=tk.BOTH, expand=True)
         self.right_frame = tk.Frame(self.root)
-        self.right_frame.pack(side='right', anchor=tk.N, padx=20, pady=20, fill=tk.BOTH, expand=True)
+        self.right_frame.pack(side='right', anchor=tk.N, padx=30, pady=pad, fill=tk.BOTH, expand=True)
 
         # BUTTON "Change Settings"
         self.btn_settings = tk.Button(self.left_frame, text="Change Settings",
@@ -132,7 +133,6 @@ class MainFrame(tk.Frame):
     def open_settings(self):
         self.top_level = tk.Toplevel(self.root)
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
-        print(self.settings)
 
     def start(self, amp, freq, pause, phase):
         for i in range(phase):

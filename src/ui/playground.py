@@ -7,7 +7,7 @@ from src.ui.box import Box
 class Playground(tk.Canvas):
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
-        self.pack(anchor=tk.CENTER)
+        self.pack(anchor=tk.CENTER, expand=tk.TRUE)
         self.height = kwargs['height']
         self.width = kwargs['width']
         self.center_y = self.height / 2
