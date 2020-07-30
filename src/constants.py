@@ -1,7 +1,31 @@
-WINDOW_WIDTH = 800 # in pixel
+# WINDOW CONST
+WINDOW_WIDTH = 800  # In pixel
 WINDOW_LENGTH = 800
+
+# NIDAQMX READ CONST
+CHANNEL_COUNT = 2
 READ_DATA_MIN_VALUE = -10
 READ_DATA_MAX_VALUE = 10
-READ_DATA_SAMPLE_RATE = 5000 # in Hz
-READ_SAMPLE_PER_WINDOW_REFRESH = 100
-WINDOW_REFRESH_TIME = 10 # in ms
+READ_DATA_SAMPLE_RATE = 5000    # In Hz
+READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH = 100
+WINDOW_REFRESH_TIME = 10    # In ms
+MAX_DELAY = 1           # Make sure this is GREATER (not equal to) your maximum delay condition; what is this?
+CLOCK_FREQUENCY = 50    # What is this?
+DELAY_BUFFER_LEN = int(MAX_DELAY * CLOCK_FREQUENCY)
+
+# CURSOR CONST
+CURSOR_SCALE = 100  # Cursor size?
+RADIUS = 200    # Cursor acceptable radius when overlapping with target?
+
+# TARGET CONST
+
+# SCORING CONST
+SCORE_CONST = 0.5
+
+# TRIAL CONST
+START_PHASE = 1
+TRACK_PHASE = 2
+SCORE_PHASE = 3
+REST_PHASE = 4
+END_PHASE = 5
+TRACK_TIME = 10 # time per trial in second(s)
