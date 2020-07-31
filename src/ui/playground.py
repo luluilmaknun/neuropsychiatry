@@ -26,9 +26,25 @@ class Playground(tk.Canvas):
 
     def move_target(self, amp, freq, phase_time):
         pos_y = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
+        position_data = pos_y
+        
         if pos_y > 0:
             pos_y = pos_y * ((self.height / 2) - self.size_cursor_target)
         else:
             pos_y = pos_y * (self.height / 2)
 
         self.target.move(0, pos_y + self.center_y)
+        return position_data
+
+    def move_cursor(self, cursor_pos_read_data, amp, freq, phase_time):
+        pos_y = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
+        pos_y = cursor_pos_read_data + pos_y
+        position_data = pos_y
+
+        if pos_y > 0:
+            pos_y = pos_y * ((self.height / 2) - self.size_cursor_target)
+        else:
+            pos_y = pos_y * (self.height / 2)
+
+        self.target.move(0, pos_y + self.center_y)
+        return position_data

@@ -2,6 +2,10 @@ import tkinter as tk
 import tkinter.filedialog as tk_fd
 from os.path import expanduser
 import time
+import nidaqmx
+import numpy as np
+import math
+import src.constants as constants
 
 from src.ui.settings import SettingsFrame
 from src.ui.playground import Playground
@@ -13,6 +17,34 @@ class MainFrame(tk.Frame):
         self.pack(anchor=tk.CENTER, fill=tk.Y)
         self.root = root
         self.root.title("Neuropsikiatri")
+
+        # Init nidaqmx task variable
+        self.is_zeroed = False  # button zero if clicked, unknown functionality?
+        self.channel_zero_button_value = [0] * constants.CHANNEL_COUNT
+        self.channel_read_value = [0] * constants.CHANNEL_COUNT
+
+        # Init target variable
+        self.target_position_data = 0
+        self.is_target_moved = False
+
+        # Init cursor variable
+        self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
+        self.cursor_position_data = 0
+        self.delay_pointer = 0   # what is this?
+        self.pertubation = 0
+
+        # Init scoring variable
+        self.total_score = 0
+        self.current_score = 0
+        self.score_count = 0
+        self.norm_score = 0
+
+        # Init trial variable
+        self.phase_time = 0
+        self.current_phase = 0
+        self.next_phase_time = 0
+            #number_of_output_data = 9
+            #output_data = [0] * number_of_output_data
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
@@ -28,7 +60,7 @@ class MainFrame(tk.Frame):
             'conditions': [
                 {
                     'condition': 1,
-                    'delay': 100,
+                    'delay': 0.5,
                     'perturbation': 5,
                     'cursor_pert_size': 5,
                     'target_pert_size': 5,
@@ -42,7 +74,52 @@ class MainFrame(tk.Frame):
         self.init_elements()
         self.init_playground(self.h * 0.8)
         self.update()
-        self.start(1, 1, 0.3, 100)
+
+        # Init nidaqmx task
+        self.nidaq_task = nidaqmx.task.Task("ReadVoltageTwoChannel")
+        self.nidaq_task.ai_channels.add_ai_voltage_chan(
+            "Dev1/ai0, Dev1/ai4",
+            0,
+            nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+            constants.READ_DATA_MIN_VALUE,
+            constants.READ_DATA_MAX_VALUE,
+            nidaqmx.constants.VoltageUnits.VOLTS,
+            0)
+        self.nidaq_task.timing.cfg_samp_clk_timing(
+            constants.READ_DATA_SAMPLE_RATE,
+            0,
+            nidaqmx.constants.Edge.RISING,
+            nidaqmx.constants.AcquisitionType.CONTINUOUS,
+            0)
+        ConstantOverwrite = nidaqmx.constants.OverwriteMode
+        self.nidaq_task.in_stream.over_write = ConstantOverwrite.OVERWRITE_UNREAD_SAMPLES
+        self.nidaq_task.start()
+
+        # Start the mainframe
+        self.start()
+    
+    def init_new_phase(self):
+        self.current_phase += 1
+        if self.current_phase == constants.END_PHASE:
+            self.current_phase = constants.START_PHASE
+        self.phase_time = 0
+
+        if self.current_phase == constants.START_PHASE:
+            self.next_phase_time = 100 #temp
+            # init trial
+        elif self.current_phase == constants.TRACK_PHASE:
+            self.is_target_moved == True
+            # make something (in)visible
+            self.next_phase_time = constants.TRACK_TIME * constants.CLOCK_FREQUENCY
+        elif current_phase == constants.SCORE_PHASE:
+            # make something (in)visible
+            self.norm_score = int(1000 * self.total_score / self.score_count)
+            # display score
+            self.next_phase_time = 200
+            # toneoff ?
+        elif current_phase == constants.REST_PHASE:
+            #display '+' character
+            self.next_phase_time = 100
 
     def init_elements(self):
         # FRAMING
@@ -134,11 +211,52 @@ class MainFrame(tk.Frame):
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
         print(self.settings)
 
-    def start(self, amp, freq, pause, phase):
+    def run(self):
+        data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
+        self.channel_read_value[0] = sum(data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+        self.channel_read_value[1] = sum(data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+
+        # w['text'] = 'ai0: %.5f\nai4: %.5f' % (channel_read_value[0], channel_read_value[1])
+
+        # One channel data processing
+        self.cursor_position_data_buffer[self.delay_pointer] = (self.channel_read_value[0] - self.channel_zero_button_value[0]) * constants.CURSOR_SCALE - 1
+        if not self.is_zeroed:
+            self.channel_zero_button_value[0] = self.channel_read_value[0]
+            self.is_zeroed = True
+
+        self.cursor_position_data = self.cursor_position_data_buffer[((self.delay_pointer + constants.DELAY_BUFFER_LEN - self.settings['conditions']['delay'] * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)]
+        if abs(self.cursor_position_data) > 2000:
+            self.cursor_position_data = np.sign(self.cursor_position_data) * 2000
+        self.phase_time += 1
+
+        if self.phase_time == self.next_phase_time:
+            self.init_new_phase()
+            
+        if self.is_target_moved:
+            self.target_position_data = self.playground.move_target(1, 0.4, self.phase_time)
+            
+            self.cursor_position_data = self.playground.move_cursor(self.cursor_position_data, 1, 0.4, self.phase_time)
+
+            self.current_score = math.exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
+            self.score_count += 1
+            self.total_score += self.current_score
+        else:
+            self.current_score = 0
+            self.target_position_data = 0
+        
+        self.delay_pointer = (self.delay_pointer + 1) % constants.DELAY_BUFFER_LEN
+        self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
+
+    def start(self):
+        """
         for i in range(phase):
             self.playground.move_target(amp, freq, i+1)
             time.sleep(pause)   # Set time here
             self.update()
+        """
+        self.init_new_phase()
+        self.run()
+
 
 def main():
     root = tk.Tk()
