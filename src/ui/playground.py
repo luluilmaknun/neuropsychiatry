@@ -46,5 +46,5 @@ class Playground(tk.Canvas):
         else:
             pos_y = pos_y * (self.height / 2)
 
-        self.target.move(0, pos_y + self.center_y)
+        self.cursor.move(0, pos_y + self.center_y)
         return position_data
