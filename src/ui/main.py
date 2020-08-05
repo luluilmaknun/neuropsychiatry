@@ -315,24 +315,23 @@ class MainFrame(tk.Frame):
 
         if self.record_on:
             # SAVE FILE
-
             self.ov_hi['offset'] = self.fileoffset_hi
             self.ov_hi['offsethigh'] = 0
-            # er := writefileex(fid_hi, @ buf_hi[curhalf_hi * buflen_hi div 2], (pointer_hi mod (buflen_hi div 2))*2, ov_hi, nil);
+            id = self.curhalf_hi * (constants.LEN_BUF_HI // 2)
+            self.fid_hi.write(self.buf_hi[id])
+
             self.ov_lo['offset'] = self.fileoffset_lo
             self.ov_lo['offsethigh'] = 0
-            # TODO
-            # er := writefileex(fid_lo, @ buf_lo[curhalf_lo * buflen_lo div 2], (pointer_lo mod (buflen_lo div 2))*2, ov_lo, nil);
-            # closehandle(fid_hi);
-            # setfileattributes( @ fn_hi[1], FILE_ATTRIBUTE_READONLY);
-            # closehandle(fid_lo);
-            # setfileattributes( @ fn_lo[1], FILE_ATTRIBUTE_READONLY);
+            id = self.curhalf_lo * (constants.LEN_BUF_LO // 2)
+            self.fid_lo.write(self.buf_hi[id])
+
+            self.fid_hi.close()
+            self.fid_lo.close()
 
             # Change record icon and increase record number
             current_id = self.record_number_entry.get()
             self.record_number_entry.set(current_id + 1)
-            self.record_icon['fill'] = 'red'
-            self.record_icon['outline'] = 'red'
+            self.record_canvas.itemconfig(self.record_icon, fill='red3')
 
         # Init nidaqmx task variable
         self.is_zeroed = False  # button zero if clicked, unknown functionality?
