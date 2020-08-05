@@ -49,7 +49,7 @@ class MainFrame(tk.Frame):
         self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
         self.cursor_position_data = 0
         self.delay_pointer = 0   # what is this?
-        self.pertubation = 0
+        self.perturbation = 0
 
         # Init scoring variable
         self.total_score = 0
@@ -236,7 +236,7 @@ class MainFrame(tk.Frame):
         if self.is_target_moved:
             self.target_position_data = self.playground.move_target(1, 0.4, self.phase_time)
             
-            self.cursor_position_data, self.pertubation = self.playground.move_cursor(self.cursor_position_data,
+            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
                                                                                       1, 0.4, self.phase_time)
 
             self.current_score = math.exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
@@ -342,7 +342,7 @@ class MainFrame(tk.Frame):
         self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
         self.cursor_position_data = 0
         self.delay_pointer = 0   # what is this?
-        self.pertubation = 0
+        self.perturbation = 0
 
         # Init scoring variable
         self.total_score = 0
@@ -367,7 +367,7 @@ class MainFrame(tk.Frame):
         # data record
         self.output_data[0] = int(self.cursor_position_data * 500)
         self.output_data[1] = int(self.target_position_data * 500)
-        self.output_data[2] = int(self.pertubation * 500)
+        self.output_data[2] = int(self.perturbation * 500)
         self.output_data[3] = self.current_phase
         # self.output_data[4] = self.trial_list[self.]  # WIP: Tunggu anthon
         self.output_data[5] = int(self.total_score)
