@@ -1,7 +1,6 @@
 import tkinter as tk
 import tkinter.filedialog as tk_fd
-from os.path import expanduser
-import time
+import os
 import nidaqmx
 import numpy as np
 import math
@@ -17,6 +16,25 @@ class MainFrame(tk.Frame):
         self.pack(anchor=tk.CENTER, fill=tk.Y)
         self.root = root
         self.root.title("Neuropsikiatri")
+
+        # Default Settings Conditions on first open
+        self.settings = {
+            'num_of_conditions': 1,
+            'num_of_trials': 10,
+            'length_of_trial': 10,
+            'size_cursor_target': 30,
+            'conditions': [
+                {
+                    'condition': 1,
+                    'delay': 0.5,
+                    'perturbation': 5,
+                    'cursor_pert_size': 5,
+                    'target_pert_size': 5,
+                    'visibility_cursor': 1,
+                    'visibility_target': 0,
+                }
+            ],
+        }
 
         # Init nidaqmx task variable
         self.is_zeroed = False  # button zero if clicked, unknown functionality?
@@ -43,32 +61,21 @@ class MainFrame(tk.Frame):
         self.phase_time = 0
         self.current_phase = 0
         self.next_phase_time = 0
-            #number_of_output_data = 9
-            #output_data = [0] * number_of_output_data
+        self.is_task_on = False
+
+        # Init record data variable
+        self.data = [[]] * constants.CHANNEL_COUNT
+        self.output_data = [0] * constants.NUM_LO
+        self.buf_hi = [0] * constants.LEN_BUF_HI
+        self.buf_lo = [0] * constants.LEN_BUF_HI
+        self.curhalf_hi, self.curhalf_lo = 0, 0
+        self.ov_hi, self.ov_lo = {}, {}
+        self.fileoffset_hi, self.fileoffset_lo, self.pointer_lo, self.pointer_hi = 0, 0, 0, 0
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
         self.h = self.root.winfo_screenheight()
         self.root.geometry("%dx%d+0+0" % (self.w, self.h))
-
-        # Default Settings Conditions on first open
-        self.settings = {
-            'num_of_conditions': 1,
-            'num_of_trials': 10,
-            'length_of_trial': 10,
-            'size_cursor_target': 30,
-            'conditions': [
-                {
-                    'condition': 1,
-                    'delay': 0.5,
-                    'perturbation': 5,
-                    'cursor_pert_size': 5,
-                    'target_pert_size': 5,
-                    'visibility_cursor': 1,
-                    'visibility_target': 0,
-                }
-            ],
-        }
 
         # Init elements frame
         self.init_elements()
@@ -135,10 +142,8 @@ class MainFrame(tk.Frame):
             .grid(row=0, column=0, sticky=tk.NW, pady=20, padx=15)
         self.record_canvas = tk.Canvas(self.right_frame, width=60, height=60)
         self.record_canvas.grid(row=0, column=1)
-        self.record_icon_out = self.record_canvas.create_oval(0, 0, 60, 60,
-                                                              fill="red3", outline="red3")
-        self.record_icon_in = self.record_canvas.create_oval(15, 15, 45, 45,
-                                                             fill="red", outline="red")
+        self.record_icon = self.record_canvas.create_oval(0, 0, 60, 60,
+                                                          fill="red3", outline="red3")
 
         # Trial Counter
         tk.Label(self.right_frame, text="Trial counter", font=("Arial", 16)) \
@@ -167,29 +172,29 @@ class MainFrame(tk.Frame):
         self.zero_button.pack(fill=tk.BOTH, expand=True)
 
         # RADIOBUTTON RECORD
-        self.record_flag = tk.BooleanVar()
-        tk.Checkbutton(self.button_frame, text="Record", var=self.record_flag, font=("Arial", 16),
+        self.record_on = tk.BooleanVar()
+        tk.Checkbutton(self.button_frame, text="Record", var=self.record_on, font=("Arial", 16),
                        onvalue=True, offvalue=False).pack()
 
         # FILE MANAGER
         self.file_frame = tk.Frame(self.right_frame)
         self.file_frame.grid(columnspan=2, sticky=tk.E)
         self.record_dir = tk.StringVar()
-        self.record_dir.set(expanduser("~"))
+        self.record_dir.set(os.path.expanduser("~"))
         self.record_dir_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=25,
                                          textvariable=self.record_dir)
         self.record_dir_entry.pack()
         self.record_dir_entry.bind("<1>", self.change_dir)
 
-        self.experiment_name = tk.StringVar()
-        self.experiment_name_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=18,
-                                              textvariable=self.experiment_name)
-        self.experiment_name_entry.pack(side='left', padx=2)
+        self.record_name = tk.StringVar()
+        self.record_name_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=18,
+                                              textvariable=self.record_name)
+        self.record_name_entry.pack(side='left', padx=2)
 
-        self.experiment_number = tk.IntVar()
-        self.experiment_number_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=6,
-                                                textvariable=self.experiment_number)
-        self.experiment_number_entry.pack(side='left', padx=1)
+        self.record_number = tk.IntVar()
+        self.record_number_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=6,
+                                                textvariable=self.record_number)
+        self.record_number_entry.pack(side='left', padx=1)
 
     def init_playground(self, size):
         self.playground = Playground(self.root, height=size, width=size, bg='black')
@@ -207,12 +212,12 @@ class MainFrame(tk.Frame):
     def open_settings(self):
         self.top_level = tk.Toplevel(self.root)
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
-        print(self.settings)
+        self.output_data = [0] * self.settings['num_of_conditions']
 
     def run(self):
-        data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
-        self.channel_read_value[0] = sum(data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
-        self.channel_read_value[1] = sum(data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+        self.data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
+        self.channel_read_value[0] = sum(self.data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+        self.channel_read_value[1] = sum(self.data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
         # One channel data processing
         self.cursor_position_data_buffer[self.delay_pointer] = (self.channel_read_value[0] - self.channel_zero_button_value[0]) * constants.CURSOR_SCALE - 1
@@ -231,7 +236,8 @@ class MainFrame(tk.Frame):
         if self.is_target_moved:
             self.target_position_data = self.playground.move_target(1, 0.4, self.phase_time)
             
-            self.cursor_position_data = self.playground.move_cursor(self.cursor_position_data, 1, 0.4, self.phase_time)
+            self.cursor_position_data, self.pertubation = self.playground.move_cursor(self.cursor_position_data,
+                                                                                      1, 0.4, self.phase_time)
 
             self.current_score = math.exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
@@ -239,7 +245,9 @@ class MainFrame(tk.Frame):
         else:
             self.current_score = 0
             self.target_position_data = 0
-        
+
+        # self.create_output_data()
+
         self.delay_pointer = (self.delay_pointer + 1) % constants.DELAY_BUFFER_LEN
         self._job = self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
 
@@ -252,16 +260,75 @@ class MainFrame(tk.Frame):
         """
         self.playground.move_target(0, 0, self.phase_time)
         self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
-        self.start_stop_button['text'] = "Stop"
-        self.start_stop_button['command'] = self.stop
-        self.nidaq_task.start()
-        self.init_new_phase()
-        self.run()
+
+        waserror = False
+        # if self.record_on:
+        #     if os.path.isdir(self.record_dir):
+        #         os.makedirs(self.record_dir)
+        #     root = self.record_dir + "\\" + self.record_name
+        #     waserror = False
+        #     fn_hi = root + "hi-" + str(self.record_number) + '.sp'
+        #     fid_hi =
+        #     self.fileoffset_hi = 0
+        #
+        #     fn_lo = root + "lo-" + str(self.record_number) + '.sp'
+        #     fid_lo =
+        #     self.fileoffset_lo = 0
+        #
+        #     self.curhalf_hi = 0
+        #     self.curhalf_lo = 0
+        #
+        #     self.pointer_hi = 0
+        #     self.pointer_lo = 0
+        #
+        #     if not waserror:
+        #         self.record_icon['fill'] = 'green'
+        #         self.record_icon['outline'] = 'green'
+
+        if not waserror:
+            self.start_stop_button['text'] = "Stop"
+            self.start_stop_button['command'] = self.stop
+            self.record_dir_entry['state'] = 'disabled'
+            self.record_name_entry['state'] = 'disabled'
+            self.record_number_entry['state'] = 'disabled'
+
+            self.trial_counter.set(0)
+            self.current_phase = 0
+            self.is_task_on = True
+
+            self.nidaq_task.start()
+            self.init_new_phase()
+            self.run()
 
     def stop(self):
         self.start_stop_button['text'] = "Start"
         self.start_stop_button['command'] = self.start
+        self.record_dir_entry['state'] = 'enabled'
+        self.record_name_entry['state'] = 'enabled'
+        self.record_number_entry['state'] = 'enabled'
         self.nidaq_task.stop()
+
+        if self.record_on:
+            # SAVE FILE
+
+            self.ov_hi['offset'] = self.fileoffset_hi
+            self.ov_hi['offsethigh'] = 0
+            # er := writefileex(fid_hi, @ buf_hi[curhalf_hi * buflen_hi div 2], (pointer_hi mod (buflen_hi div 2))*2, ov_hi, nil);
+            self.ov_lo['offset'] = self.fileoffset_lo
+            self.ov_lo['offsethigh'] = 0
+            # TODO
+            # er := writefileex(fid_lo, @ buf_lo[curhalf_lo * buflen_lo div 2], (pointer_lo mod (buflen_lo div 2))*2, ov_lo, nil);
+            # closehandle(fid_hi);
+            # setfileattributes( @ fn_hi[1], FILE_ATTRIBUTE_READONLY);
+            # closehandle(fid_lo);
+            # setfileattributes( @ fn_lo[1], FILE_ATTRIBUTE_READONLY);
+
+            # Change record icon and increase record number
+            current_id = self.record_number_entry.get()
+            self.record_number_entry.set(current_id + 1)
+            self.record_icon['fill'] = 'red'
+            self.record_icon['outline'] = 'red'
+
         # Init nidaqmx task variable
         self.is_zeroed = False  # button zero if clicked, unknown functionality?
         self.channel_zero_button_value = [0] * constants.CHANNEL_COUNT
@@ -296,6 +363,47 @@ class MainFrame(tk.Frame):
         self.channel_zero_button_value[0] = self.channel_read_value[0]
         self.is_zeroed = True
 
+    def create_output_data(self):
+        # data record
+        self.output_data[0] = int(self.cursor_position_data * 500)
+        self.output_data[1] = int(self.target_position_data * 500)
+        self.output_data[2] = int(self.pertubation * 500)
+        self.output_data[3] = self.current_phase
+        # self.output_data[4] = self.trial_list[self.]  # WIP: Tunggu anthon
+        self.output_data[5] = int(self.total_score)
+        self.output_data[6] = self.score_count
+        self.output_data[7] = int(self.current_score * 1000)
+        self.output_data[8] = constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+
+        if self.record_on:
+            for i in range(self.num_lo):
+                self.buf_lo[self.pointer_lo + i-1] = self.output_data[i]
+            self.pointer_lo = (self.pointer_lo + self.num_lo) % constants.LEN_BUF_LO
+
+            thishalf = self.pointer_lo // (constants.LEN_BUF_LO // 2)
+            if thishalf != self.curhalf_lo:
+                self.ov_lo['offset'] = self.fileoffset_lo
+                self.ov_lo['offsethigh'] = 0
+                self.fileoffset_lo = self.fileoffset_lo + constants.LEN_BUF_LO
+                # TODO
+                # er = writefileex(fid_lo, @ buf_lo[curhalf_lo * buflen_lo div 2], buflen_lo, ov_lo, nil);
+                # if longint(er)=0 then Record_Light.Brush.Color := clRed;
+                self.curhalf_lo = 1 - self.curhalf_lo
+
+            for i in range(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH):
+                for j in range(constants.CHANNEL_COUNT):
+                    self.buf_hi[self.pointer_hi + j - 1] = round(1000 * self.data[j][i])
+                    self.pointer_hi = (self.pointer_hi + constants.CHANNEL_COUNT) % constants.LEN_BUF_HI
+
+            thishalf = self.pointer_hi // (constants.LEN_BUF_HIN // 2)
+            if thishalf != self.curhalf_hi:
+                self.ov_hi['offset'] = self.fileoffset_hi
+                self.ov_hi['offsethigh'] = 0
+                self.fileoffset_hi = self.fileoffset_hi + constants.LEN_BUF_HI
+                # TODO
+                # er := writefileex(fid_hi, @ buf_hi[curhalf_hi * buflen_hi div 2], buflen_hi, ov_hi, nil);
+                # if longint(er)=0 then Record_Light.Brush.Color := clRed;
+                self.curhalf_hi = 1 - self.curhalf_hi
 
 
 def main():
