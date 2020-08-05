@@ -390,9 +390,8 @@ class MainFrame(tk.Frame):
                 self.ov_lo['offset'] = self.fileoffset_lo
                 self.ov_lo['offsethigh'] = 0
                 self.fileoffset_lo = self.fileoffset_lo + constants.LEN_BUF_LO
-                # TODO
-                # er = writefileex(fid_lo, @ buf_lo[curhalf_lo * buflen_lo div 2], buflen_lo, ov_lo, nil);
-                # if longint(er)=0 then Record_Light.Brush.Color := clRed;
+                id = self.curhalf_lo * (constants.LEN_BUF_LO // 2)
+                self.fid_lo.write(self.buf_lo[id])
                 self.curhalf_lo = 1 - self.curhalf_lo
 
             for i in range(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH):
@@ -405,9 +404,8 @@ class MainFrame(tk.Frame):
                 self.ov_hi['offset'] = self.fileoffset_hi
                 self.ov_hi['offsethigh'] = 0
                 self.fileoffset_hi = self.fileoffset_hi + constants.LEN_BUF_HI
-                # TODO
-                # er := writefileex(fid_hi, @ buf_hi[curhalf_hi * buflen_hi div 2], buflen_hi, ov_hi, nil);
-                # if longint(er)=0 then Record_Light.Brush.Color := clRed;
+                id = self.curhalf_hi * (constants.LEN_BUF_HI // 2)
+                self.fid_hi.write(self.buf_hi[id])
                 self.curhalf_hi = 1 - self.curhalf_hi
 
 
