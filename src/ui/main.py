@@ -143,7 +143,7 @@ class MainFrame(tk.Frame):
         self.record_canvas = tk.Canvas(self.right_frame, width=60, height=60)
         self.record_canvas.grid(row=0, column=1)
         self.record_icon = self.record_canvas.create_oval(0, 0, 60, 60,
-                                                          fill="red3", outline="red3")
+                                                          fill="red3", outline="")
 
         # Trial Counter
         tk.Label(self.right_frame, text="Trial counter", font=("Arial", 16)) \
@@ -186,12 +186,12 @@ class MainFrame(tk.Frame):
         self.record_dir_entry.pack()
         self.record_dir_entry.bind("<1>", self.change_dir)
 
-        self.record_name = tk.StringVar()
+        self.record_name = tk.StringVar(value='test')
         self.record_name_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=18,
                                               textvariable=self.record_name)
         self.record_name_entry.pack(side='left', padx=2)
 
-        self.record_number = tk.IntVar()
+        self.record_number = tk.IntVar(value=1)
         self.record_number_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=6,
                                                 textvariable=self.record_number)
         self.record_number_entry.pack(side='left', padx=1)
@@ -262,28 +262,31 @@ class MainFrame(tk.Frame):
         self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
 
         waserror = False
-        # if self.record_on:
-        #     if os.path.isdir(self.record_dir):
-        #         os.makedirs(self.record_dir)
-        #     root = self.record_dir + "\\" + self.record_name
-        #     waserror = False
-        #     fn_hi = root + "hi-" + str(self.record_number) + '.sp'
-        #     fid_hi =
-        #     self.fileoffset_hi = 0
-        #
-        #     fn_lo = root + "lo-" + str(self.record_number) + '.sp'
-        #     fid_lo =
-        #     self.fileoffset_lo = 0
-        #
-        #     self.curhalf_hi = 0
-        #     self.curhalf_lo = 0
-        #
-        #     self.pointer_hi = 0
-        #     self.pointer_lo = 0
-        #
-        #     if not waserror:
-        #         self.record_icon['fill'] = 'green'
-        #         self.record_icon['outline'] = 'green'
+        if self.record_on:
+            record_dir = self.record_dir.get()
+            record_name = self.record_name.get()
+            record_number = self.record_number.get()
+
+            if not os.path.isdir(record_dir):
+                os.makedirs(record_dir)
+            root = record_dir + "\\" + record_name
+            waserror = False
+            fn_hi = root + "hi-" + str(record_number) + '.sp'
+            self.fid_hi = open(fn_hi, 'w')
+            self.fileoffset_hi = 0
+
+            fn_lo = root + "lo-" + str(record_number) + '.sp'
+            self.fid_lo = open(fn_lo, 'w')
+            self.fileoffset_lo = 0
+
+            self.curhalf_hi = 0
+            self.curhalf_lo = 0
+
+            self.pointer_hi = 0
+            self.pointer_lo = 0
+
+            if not waserror:
+                self.record_canvas.itemconfig(self.record_icon, fill='lime green')
 
         if not waserror:
             self.start_stop_button['text'] = "Stop"
