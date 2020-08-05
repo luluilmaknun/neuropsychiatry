@@ -271,6 +271,8 @@ class MainFrame(tk.Frame):
                 os.makedirs(record_dir)
             root = record_dir + "\\" + record_name
             waserror = False
+
+            # TODO: Error handling
             fn_hi = root + "hi-" + str(record_number) + '.sp'
             self.fid_hi = open(fn_hi, 'w')
             self.fileoffset_hi = 0
@@ -367,7 +369,7 @@ class MainFrame(tk.Frame):
         self.is_zeroed = True
 
     def create_output_data(self):
-        # data record
+        # data output record
         self.output_data[0] = int(self.cursor_position_data * 500)
         self.output_data[1] = int(self.target_position_data * 500)
         self.output_data[2] = int(self.perturbation * 500)
