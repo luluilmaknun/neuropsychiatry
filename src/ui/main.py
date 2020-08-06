@@ -61,6 +61,7 @@ class MainFrame(tk.Frame):
         self.phase_time = 0
         self.current_phase = 0
         self.next_phase_time = 0
+        self.list_counter = 0
         self.is_task_on = False
 
         # Init record data variable
@@ -246,7 +247,7 @@ class MainFrame(tk.Frame):
             self.current_score = 0
             self.target_position_data = 0
 
-        # self.create_output_data()
+        self.create_output_data()
 
         self.delay_pointer = (self.delay_pointer + 1) % constants.DELAY_BUFFER_LEN
         self._job = self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
@@ -262,7 +263,7 @@ class MainFrame(tk.Frame):
         self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
 
         waserror = False
-        if self.record_on:
+        if self.record_on.get():
             record_dir = self.record_dir.get()
             record_name = self.record_name.get()
             record_number = self.record_number.get()
@@ -308,29 +309,29 @@ class MainFrame(tk.Frame):
     def stop(self):
         self.start_stop_button['text'] = "Start"
         self.start_stop_button['command'] = self.start
-        self.record_dir_entry['state'] = 'enabled'
-        self.record_name_entry['state'] = 'enabled'
-        self.record_number_entry['state'] = 'enabled'
+        self.record_dir_entry['state'] = 'normal'
+        self.record_name_entry['state'] = 'normal'
+        self.record_number_entry['state'] = 'normal'
         self.nidaq_task.stop()
 
-        if self.record_on:
+        if self.record_on.get():
             # SAVE FILE
             self.ov_hi['offset'] = self.fileoffset_hi
             self.ov_hi['offsethigh'] = 0
             id = self.curhalf_hi * (constants.LEN_BUF_HI // 2)
-            self.fid_hi.write(self.buf_hi[id])
+            self.fid_hi.write(str(self.buf_hi[id]))
 
             self.ov_lo['offset'] = self.fileoffset_lo
             self.ov_lo['offsethigh'] = 0
             id = self.curhalf_lo * (constants.LEN_BUF_LO // 2)
-            self.fid_lo.write(self.buf_hi[id])
+            self.fid_lo.write(str(self.buf_lo[id]))
 
             self.fid_hi.close()
             self.fid_lo.close()
 
             # Change record icon and increase record number
             current_id = self.record_number_entry.get()
-            self.record_number_entry.set(current_id + 1)
+            self.record_number.set(current_id + 1)
             self.record_canvas.itemconfig(self.record_icon, fill='red3')
 
         # Init nidaqmx task variable
@@ -373,16 +374,16 @@ class MainFrame(tk.Frame):
         self.output_data[1] = int(self.target_position_data * 500)
         self.output_data[2] = int(self.perturbation * 500)
         self.output_data[3] = self.current_phase
-        # self.output_data[4] = self.trial_list[self.]  # WIP: Tunggu anthon
+        self.output_data[4] = self.list_counter
         self.output_data[5] = int(self.total_score)
         self.output_data[6] = self.score_count
         self.output_data[7] = int(self.current_score * 1000)
         self.output_data[8] = constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
-        if self.record_on:
-            for i in range(self.num_lo):
+        if self.record_on.get():
+            for i in range(constants.NUM_LO):
                 self.buf_lo[self.pointer_lo + i-1] = self.output_data[i]
-            self.pointer_lo = (self.pointer_lo + self.num_lo) % constants.LEN_BUF_LO
+            self.pointer_lo = (self.pointer_lo + constants.NUM_LO) % constants.LEN_BUF_LO
 
             thishalf = self.pointer_lo // (constants.LEN_BUF_LO // 2)
             if thishalf != self.curhalf_lo:
@@ -390,7 +391,7 @@ class MainFrame(tk.Frame):
                 self.ov_lo['offsethigh'] = 0
                 self.fileoffset_lo = self.fileoffset_lo + constants.LEN_BUF_LO
                 id = self.curhalf_lo * (constants.LEN_BUF_LO // 2)
-                self.fid_lo.write(self.buf_lo[id])
+                self.fid_lo.write(str(self.buf_lo[id]))
                 self.curhalf_lo = 1 - self.curhalf_lo
 
             for i in range(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH):
@@ -398,13 +399,13 @@ class MainFrame(tk.Frame):
                     self.buf_hi[self.pointer_hi + j - 1] = round(1000 * self.data[j][i])
                     self.pointer_hi = (self.pointer_hi + constants.CHANNEL_COUNT) % constants.LEN_BUF_HI
 
-            thishalf = self.pointer_hi // (constants.LEN_BUF_HIN // 2)
+            thishalf = self.pointer_hi // (constants.LEN_BUF_HI // 2)
             if thishalf != self.curhalf_hi:
                 self.ov_hi['offset'] = self.fileoffset_hi
                 self.ov_hi['offsethigh'] = 0
                 self.fileoffset_hi = self.fileoffset_hi + constants.LEN_BUF_HI
                 id = self.curhalf_hi * (constants.LEN_BUF_HI // 2)
-                self.fid_hi.write(self.buf_hi[id])
+                self.fid_hi.write(str(self.buf_hi[id]))
                 self.curhalf_hi = 1 - self.curhalf_hi
 
 
