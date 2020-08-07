@@ -5,3 +5,4 @@ numpy==1.19.0
 six==1.15.0
 nidaqmx==0.5.7
 pyinstaller==3.6
+pywin32

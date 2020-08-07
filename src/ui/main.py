@@ -4,6 +4,8 @@ import os
 import nidaqmx
 import numpy as np
 import math
+import win32file
+import win32event
 import src.constants as constants
 
 from src.ui.settings import SettingsFrame
@@ -70,8 +72,8 @@ class MainFrame(tk.Frame):
         self.buf_hi = [0] * constants.LEN_BUF_HI
         self.buf_lo = [0] * constants.LEN_BUF_HI
         self.curhalf_hi, self.curhalf_lo = 0, 0
-        self.ov_hi, self.ov_lo = {}, {}
         self.fileoffset_hi, self.fileoffset_lo, self.pointer_lo, self.pointer_hi = 0, 0, 0, 0
+        self.ov_hi, self.ov_lo = win32file.OVERLAPPED(), win32file.OVERLAPPED()
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
@@ -213,7 +215,6 @@ class MainFrame(tk.Frame):
     def open_settings(self):
         self.top_level = tk.Toplevel(self.root)
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
-        self.output_data = [0] * self.settings['num_of_conditions']
 
     def run(self):
         self.data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
@@ -253,12 +254,6 @@ class MainFrame(tk.Frame):
         self._job = self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
 
     def start(self):
-        """
-        for i in range(phase):
-            self.playground.move_target(amp, freq, i+1)
-            time.sleep(pause)   # Set time here
-            self.update()
-        """
         self.playground.move_target(0, 0, self.phase_time)
         self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
 
@@ -273,13 +268,28 @@ class MainFrame(tk.Frame):
             root = record_dir + "\\" + record_name
             waserror = False
 
+            self.ov_hi.hEvent = win32event.CreateEvent(None, 0, 0, None)
+            self.ov_lo.hEvent = win32event.CreateEvent(None, 0, 0, None)
+
             # TODO: Error handling
             fn_hi = root + "hi-" + str(record_number) + '.sp'
-            self.fid_hi = open(fn_hi, 'w')
+            self.fid_hi = win32file.CreateFile(fn_hi,
+                                               win32file.GENERIC_WRITE,
+                                               0,
+                                               None,
+                                               win32file.CREATE_ALWAYS,
+                                               win32file.FILE_FLAG_OVERLAPPED,
+                                               None)
             self.fileoffset_hi = 0
 
             fn_lo = root + "lo-" + str(record_number) + '.sp'
-            self.fid_lo = open(fn_lo, 'w')
+            self.fid_lo = win32file.CreateFile(fn_lo,
+                                               win32file.GENERIC_WRITE,
+                                               0,
+                                               None,
+                                               win32file.CREATE_ALWAYS,
+                                               win32file.FILE_FLAG_OVERLAPPED,
+                                               None)
             self.fileoffset_lo = 0
 
             self.curhalf_hi = 0
@@ -300,10 +310,10 @@ class MainFrame(tk.Frame):
 
             self.trial_counter.set(0)
             self.current_phase = 0
-            self.is_task_on = True
 
             self.nidaq_task.start()
             self.init_new_phase()
+            self.is_task_on = True
             self.run()
 
     def stop(self):
@@ -316,22 +326,30 @@ class MainFrame(tk.Frame):
 
         if self.record_on.get():
             # SAVE FILE
-            self.ov_hi['offset'] = self.fileoffset_hi
-            self.ov_hi['offsethigh'] = 0
-            id = self.curhalf_hi * (constants.LEN_BUF_HI // 2)
-            self.fid_hi.write(str(self.buf_hi[id]))
+            self.ov_hi.Offset = self.fileoffset_hi
+            self.ov_hi.OffsetHigh = 0
+            id_hi = (self.curhalf_hi * constants.LEN_BUF_HI) // 2
+            num_bytes_hi = (self.pointer_hi % (constants.LEN_BUF_HI // 2)) * 2
+            data_hi = self.buf_hi[id_hi].to_bytes(num_bytes_hi, 'little', signed=True)
+            er = win32file.WriteFile(self.fid_hi,
+                                     data_hi,
+                                     self.ov_hi)
 
-            self.ov_lo['offset'] = self.fileoffset_lo
-            self.ov_lo['offsethigh'] = 0
-            id = self.curhalf_lo * (constants.LEN_BUF_LO // 2)
-            self.fid_lo.write(str(self.buf_lo[id]))
+            self.ov_lo.Offset = self.fileoffset_lo
+            self.ov_lo.OffsetHigh = 0
+            id_lo = (self.curhalf_lo * constants.LEN_BUF_LO) // 2
+            num_bytes_lo = (self.pointer_lo % (constants.LEN_BUF_LO // 2)) * 2
+            data_lo = self.buf_lo[id_lo].to_bytes(num_bytes_lo, 'little', signed=True)
+            er = win32file.WriteFile(self.fid_lo,
+                                     data_lo,
+                                     self.ov_lo)
 
-            self.fid_hi.close()
-            self.fid_lo.close()
+            win32file.CloseHandle(self.fid_hi)
+            win32file.CloseHandle(self.fid_lo)
 
             # Change record icon and increase record number
             current_id = self.record_number_entry.get()
-            self.record_number.set(current_id + 1)
+            self.record_number.set(str(current_id) + 1)
             self.record_canvas.itemconfig(self.record_icon, fill='red3')
 
         # Init nidaqmx task variable
@@ -342,6 +360,7 @@ class MainFrame(tk.Frame):
         # Init target variable
         self.target_position_data = 0
         self.is_target_moved = False
+        self.is_task_on = False
 
         # Init cursor variable
         self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
@@ -374,7 +393,7 @@ class MainFrame(tk.Frame):
         self.output_data[1] = int(self.target_position_data * 500)
         self.output_data[2] = int(self.perturbation * 500)
         self.output_data[3] = self.current_phase
-        self.output_data[4] = self.list_counter
+        self.output_data[4] = self.list_counter + 1
         self.output_data[5] = int(self.total_score)
         self.output_data[6] = self.score_count
         self.output_data[7] = int(self.current_score * 1000)
@@ -382,30 +401,36 @@ class MainFrame(tk.Frame):
 
         if self.record_on.get():
             for i in range(constants.NUM_LO):
-                self.buf_lo[self.pointer_lo + i-1] = self.output_data[i]
+                self.buf_lo[self.pointer_lo + i] = self.output_data[i]
             self.pointer_lo = (self.pointer_lo + constants.NUM_LO) % constants.LEN_BUF_LO
 
             thishalf = self.pointer_lo // (constants.LEN_BUF_LO // 2)
             if thishalf != self.curhalf_lo:
-                self.ov_lo['offset'] = self.fileoffset_lo
-                self.ov_lo['offsethigh'] = 0
+                self.ov_lo.Offset = self.fileoffset_lo
+                self.ov_lo.OffsetHigh = 0
                 self.fileoffset_lo = self.fileoffset_lo + constants.LEN_BUF_LO
-                id = self.curhalf_lo * (constants.LEN_BUF_LO // 2)
-                self.fid_lo.write(str(self.buf_lo[id]))
+                id_lo = (self.curhalf_lo * constants.LEN_BUF_LO) // 2
+                data_lo = self.buf_lo[id_lo].to_bytes(constants.LEN_BUF_LO, 'little', signed=True)
+                er1 = win32file.WriteFile(self.fid_lo,
+                                         data_lo,
+                                         self.ov_lo)
                 self.curhalf_lo = 1 - self.curhalf_lo
 
             for i in range(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH):
                 for j in range(constants.CHANNEL_COUNT):
-                    self.buf_hi[self.pointer_hi + j - 1] = round(1000 * self.data[j][i])
-                    self.pointer_hi = (self.pointer_hi + constants.CHANNEL_COUNT) % constants.LEN_BUF_HI
+                    self.buf_hi[self.pointer_hi + j] = int(1000 * self.data[j][i])
+                self.pointer_hi = (self.pointer_hi + constants.CHANNEL_COUNT) % constants.LEN_BUF_HI
 
             thishalf = self.pointer_hi // (constants.LEN_BUF_HI // 2)
             if thishalf != self.curhalf_hi:
-                self.ov_hi['offset'] = self.fileoffset_hi
-                self.ov_hi['offsethigh'] = 0
+                self.ov_hi.Offset = self.fileoffset_hi
+                self.ov_hi.OffsetHigh = 0
                 self.fileoffset_hi = self.fileoffset_hi + constants.LEN_BUF_HI
-                id = self.curhalf_hi * (constants.LEN_BUF_HI // 2)
-                self.fid_hi.write(str(self.buf_hi[id]))
+                id_hi = (self.curhalf_hi * constants.LEN_BUF_HI) // 2
+                data_hi = self.buf_hi[id_hi].to_bytes(constants.LEN_BUF_HI, 'little', signed=True)
+                er2 = win32file.WriteFile(self.fid_hi,
+                                         data_hi,
+                                         self.ov_hi)
                 self.curhalf_hi = 1 - self.curhalf_hi
 
 
