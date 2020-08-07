@@ -34,7 +34,7 @@ class Playground(tk.Canvas):
             position_data = position_data * (self.height / 2)
 
         self.target.move(0, position_data + self.center_y)
-        return position_data
+        return pos_y
 
     def move_cursor(self, cursor_pos_read_data, amp, freq, phase_time):
         pert = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
@@ -46,4 +46,4 @@ class Playground(tk.Canvas):
             position_data = pos_y * (self.height / 2)
 
         self.cursor.move(0, position_data + (self.center_y * 2))
-        return position_data, pert
+        return pos_y, pert
