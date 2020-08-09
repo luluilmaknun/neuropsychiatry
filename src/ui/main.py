@@ -5,10 +5,10 @@ import time
 import nidaqmx
 import numpy as np
 import math
-import src.constants as constants
+import constants as constants
 
-from src.ui.settings import SettingsFrame
-from src.ui.playground import Playground
+from settings import SettingsFrame
+from playground import Playground
 
 
 class MainFrame(tk.Frame):
@@ -17,34 +17,10 @@ class MainFrame(tk.Frame):
         self.pack(anchor=tk.CENTER, fill=tk.Y)
         self.root = root
         self.root.title("Neuropsikiatri")
-
-        # Init nidaqmx task variable
-        self.is_zeroed = False  # button zero if clicked, unknown functionality?
-        self.channel_zero_button_value = [0] * constants.CHANNEL_COUNT
-        self.channel_read_value = [0] * constants.CHANNEL_COUNT
-
-        # Init target variable
-        self.target_position_data = 0
-        self.is_target_moved = False
-
-        # Init cursor variable
-        self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
-        self.cursor_position_data = 0
-        self.delay_pointer = 0   # what is this?
-        self.pertubation = 0
-
-        # Init scoring variable
-        self.total_score = 0
-        self.current_score = 0
-        self.score_count = 0
-        self.norm_score = 0
-
-        # Init trial variable
-        self.phase_time = 0
-        self.current_phase = 0
-        self.next_phase_time = 0
-            #number_of_output_data = 9
-            #output_data = [0] * number_of_output_data
+        self._job = None
+        self.init_running_variable()
+        self.wtext = tk.Label(self.root)
+        self.wtext.pack()
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
@@ -81,8 +57,8 @@ class MainFrame(tk.Frame):
             "Dev1/ai0, Dev1/ai4",
             0,
             nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-            constants.READ_DATA_MIN_VALUE,
-            constants.READ_DATA_MAX_VALUE,
+            0.15,#constants.READ_DATA_MIN_VALUE,
+            0.2,#constants.READ_DATA_MAX_VALUE,
             nidaqmx.constants.VoltageUnits.VOLTS,
             0)
         self.nidaq_task.timing.cfg_samp_clk_timing(
@@ -97,22 +73,32 @@ class MainFrame(tk.Frame):
     def init_new_phase(self):
         self.current_phase += 1
         if self.current_phase == constants.END_PHASE:
+            self.trial_number += 1
+            if self.trial_number > self.settings['num_of_trials']:
+                self.stop()
+                return
             self.current_phase = constants.START_PHASE
         self.phase_time = 0
+        self.wtext['text'] = 'trial: %.1d\nconditions: %.1d\nphase: %.1d' % (self.trial_number, self.list_counter, self.current_phase)
 
         if self.current_phase == constants.START_PHASE:
-            self.next_phase_time = 100 #temp
-            # init trial
+            self.list_counter += 1
+            if self.list_counter >= self.settings['num_of_conditions']:
+                self.list_counter = 0
+            self.next_phase_time = 100
+            self.score_count = 0
+            self.current_score = 0
+            self.norm_score = 0
+            self.total_score = 0
+            self.is_target_moved = False
+            # update trial number display
         elif self.current_phase == constants.TRACK_PHASE:
             self.is_target_moved = True
-            # make something (in)visible
-            self.next_phase_time = constants.TRACK_TIME * constants.CLOCK_FREQUENCY
+            self.next_phase_time = self.settings['length_of_trial'] * 1000 / constants.CLOCK_FREQUENCY
         elif self.current_phase == constants.SCORE_PHASE:
-            # make something (in)visible
             self.norm_score = int(1000 * self.total_score / self.score_count)
             # display score
             self.next_phase_time = 200
-            # toneoff ?
         elif self.current_phase == constants.REST_PHASE:
             #display '+' character
             self.next_phase_time = 100
@@ -211,6 +197,7 @@ class MainFrame(tk.Frame):
 
     def run(self):
         data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
+        data_dump = self.nidaq_task.read(100)
         self.channel_read_value[0] = sum(data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
         self.channel_read_value[1] = sum(data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
@@ -220,7 +207,7 @@ class MainFrame(tk.Frame):
             self.channel_zero_button_value[0] = self.channel_read_value[0]
             self.is_zeroed = True
 
-        self.cursor_position_data = self.cursor_position_data_buffer[((self.delay_pointer + constants.DELAY_BUFFER_LEN - 1 * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)] # still need to round
+        self.cursor_position_data = self.cursor_position_data_buffer[round((self.delay_pointer + constants.DELAY_BUFFER_LEN - self.settings['conditions'][self.list_counter]['delay'] * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)]
         if abs(self.cursor_position_data) > 2000:
             self.cursor_position_data = np.sign(self.cursor_position_data) * 2000
         self.phase_time += 1
@@ -229,7 +216,7 @@ class MainFrame(tk.Frame):
             self.init_new_phase()
 
         if self.is_target_moved:
-            self.target_position_data = self.playground.move_target(1, 0.4, self.phase_time)
+            self.target_position_data = self.playground.move_target(1, 0.4, self.phase_time) #
             
             self.cursor_position_data = self.playground.move_cursor(self.cursor_position_data, 1, 0.4, self.phase_time)
 
@@ -241,15 +228,9 @@ class MainFrame(tk.Frame):
             self.target_position_data = 0
         
         self.delay_pointer = (self.delay_pointer + 1) % constants.DELAY_BUFFER_LEN
-        self._job = self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
+        self._job = self.root.after(20, self.run)
 
     def start(self):
-        """
-        for i in range(phase):
-            self.playground.move_target(amp, freq, i+1)
-            time.sleep(pause)   # Set time here
-            self.update()
-        """
         self.playground.move_target(0, 0, self.phase_time)
         self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
         self.start_stop_button['text'] = "Stop"
@@ -262,8 +243,15 @@ class MainFrame(tk.Frame):
         self.start_stop_button['text'] = "Start"
         self.start_stop_button['command'] = self.start
         self.nidaq_task.stop()
+        self.init_running_variable()
+    
+    def zero_pressed(self):
+        self.channel_zero_button_value[0] = self.channel_read_value[0]
+        self.is_zeroed = True
+
+    def init_running_variable(self):
         # Init nidaqmx task variable
-        self.is_zeroed = False  # button zero if clicked, unknown functionality?
+        self.is_zeroed = False
         self.channel_zero_button_value = [0] * constants.CHANNEL_COUNT
         self.channel_read_value = [0] * constants.CHANNEL_COUNT
 
@@ -274,7 +262,7 @@ class MainFrame(tk.Frame):
         # Init cursor variable
         self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
         self.cursor_position_data = 0
-        self.delay_pointer = 0   # what is this?
+        self.delay_pointer = 0
         self.pertubation = 0
 
         # Init scoring variable
@@ -284,18 +272,14 @@ class MainFrame(tk.Frame):
         self.norm_score = 0
 
         # Init trial variable
+        self.list_counter = -1
+        self.trial_number = 0
         self.phase_time = 0
         self.current_phase = 0
         self.next_phase_time = 0
-
         if self._job is not None:
             self.root.after_cancel(self._job)
             self._job = None
-
-    def zero_pressed(self):
-        self.channel_zero_button_value[0] = self.channel_read_value[0]
-        self.is_zeroed = True
-
 
 
 def main():
