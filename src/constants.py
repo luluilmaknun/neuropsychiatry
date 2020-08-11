@@ -12,9 +12,7 @@ WINDOW_REFRESH_TIME = 10    # In ms
 MAX_DELAY = 1           # Make sure this is GREATER (not equal to) your maximum delay condition; what is this?
 CLOCK_FREQUENCY = 50    # What is this?
 DELAY_BUFFER_LEN = int(MAX_DELAY * CLOCK_FREQUENCY)
-LEN_BUF_HI = CHANNEL_COUNT * READ_DATA_SAMPLE_RATE
 NUM_LO = 9
-LEN_BUF_LO = 100 * NUM_LO
 
 # CURSOR CONST
 CURSOR_SCALE = 100  # Cursor size?

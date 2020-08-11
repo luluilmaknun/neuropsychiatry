@@ -4,6 +4,7 @@ import os
 import nidaqmx
 import numpy as np
 import math
+import csv
 import win32file
 import win32event
 import src.constants as constants
@@ -69,11 +70,6 @@ class MainFrame(tk.Frame):
         # Init record data variable
         self.data = [[]] * constants.CHANNEL_COUNT
         self.output_data = [0] * constants.NUM_LO
-        self.buf_hi = [0] * constants.LEN_BUF_HI
-        self.buf_lo = [0] * constants.LEN_BUF_HI
-        self.curhalf_hi, self.curhalf_lo = 0, 0
-        self.fileoffset_hi, self.fileoffset_lo, self.pointer_lo, self.pointer_hi = 0, 0, 0, 0
-        self.ov_hi, self.ov_lo = win32file.OVERLAPPED(), win32file.OVERLAPPED()
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
@@ -271,32 +267,21 @@ class MainFrame(tk.Frame):
             self.ov_hi.hEvent = win32event.CreateEvent(None, 0, 0, None)
             self.ov_lo.hEvent = win32event.CreateEvent(None, 0, 0, None)
 
-            # TODO: Error handling
-            fn_hi = root + "hi-" + str(record_number) + '.sp'
-            self.fid_hi = win32file.CreateFile(fn_hi,
-                                               win32file.GENERIC_WRITE,
-                                               0,
-                                               None,
-                                               win32file.CREATE_ALWAYS,
-                                               win32file.FILE_FLAG_OVERLAPPED,
-                                               None)
-            self.fileoffset_hi = 0
+            try:
+                fn_hi = root + "hi-" + str(record_number) + '.csv'
+                self.fid_hi = open(fn_hi, 'w')
+                self.fwriter_hi = csv.writer(self.fid_hi)
 
-            fn_lo = root + "lo-" + str(record_number) + '.sp'
-            self.fid_lo = win32file.CreateFile(fn_lo,
-                                               win32file.GENERIC_WRITE,
-                                               0,
-                                               None,
-                                               win32file.CREATE_ALWAYS,
-                                               win32file.FILE_FLAG_OVERLAPPED,
-                                               None)
-            self.fileoffset_lo = 0
+                fn_lo = root + "lo-" + str(record_number) + '.csv'
+                self.fid_lo = open(fn_lo, 'w')
+                self.fwriter_lo = csv.writer(self.fid_lo)
 
-            self.curhalf_hi = 0
-            self.curhalf_lo = 0
-
-            self.pointer_hi = 0
-            self.pointer_lo = 0
+                header = ['cursor position', 'target position', 'perturbation', 'current phase', 'condition',
+                          'total score', 'score count', 'current score', 'frame rate']
+                self.fwriter_lo.writerow(header)
+            except IOError as e:
+                waserror = True
+                self.messagebox.showerror(title='I/O Error', message=str(e))
 
             if not waserror:
                 self.record_canvas.itemconfig(self.record_icon, fill='lime green')
@@ -325,32 +310,19 @@ class MainFrame(tk.Frame):
         self.nidaq_task.stop()
 
         if self.record_on.get():
-            # SAVE FILE
-            self.ov_hi.Offset = self.fileoffset_hi
-            self.ov_hi.OffsetHigh = 0
-            id_hi = (self.curhalf_hi * constants.LEN_BUF_HI) // 2
-            num_bytes_hi = (self.pointer_hi % (constants.LEN_BUF_HI // 2)) * 2
-            data_hi = self.buf_hi[id_hi].to_bytes(num_bytes_hi, 'little', signed=True)
-            er = win32file.WriteFile(self.fid_hi,
-                                     data_hi,
-                                     self.ov_hi)
+            try:
+                data = [[int(x * 100) for x in single_ch] for single_ch in self.data]
 
-            self.ov_lo.Offset = self.fileoffset_lo
-            self.ov_lo.OffsetHigh = 0
-            id_lo = (self.curhalf_lo * constants.LEN_BUF_LO) // 2
-            num_bytes_lo = (self.pointer_lo % (constants.LEN_BUF_LO // 2)) * 2
-            data_lo = self.buf_lo[id_lo].to_bytes(num_bytes_lo, 'little', signed=True)
-            er = win32file.WriteFile(self.fid_lo,
-                                     data_lo,
-                                     self.ov_lo)
+                self.fwriter_lo.writerow(self.output_data)
+                self.fwriter_hi.writerow(data)
+            finally:
+                self.fid_lo.close()
+                self.fid_hi.close()
 
-            win32file.CloseHandle(self.fid_hi)
-            win32file.CloseHandle(self.fid_lo)
-
-            # Change record icon and increase record number
-            current_id = self.record_number_entry.get()
-            self.record_number.set(str(current_id + 1))
-            self.record_canvas.itemconfig(self.record_icon, fill='red3')
+                # Change record icon and increase record number
+                current_id = self.record_number.get()
+                self.record_number.set(current_id + 1)
+                self.record_canvas.itemconfig(self.record_icon, fill='red3')
 
         # Init nidaqmx task variable
         self.is_zeroed = False  # button zero if clicked, unknown functionality?
@@ -400,38 +372,9 @@ class MainFrame(tk.Frame):
         self.output_data[8] = constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
         if self.record_on.get():
-            for i in range(constants.NUM_LO):
-                self.buf_lo[self.pointer_lo + i] = self.output_data[i]
-            self.pointer_lo = (self.pointer_lo + constants.NUM_LO) % constants.LEN_BUF_LO
-
-            thishalf = self.pointer_lo // (constants.LEN_BUF_LO // 2)
-            if thishalf != self.curhalf_lo:
-                self.ov_lo.Offset = self.fileoffset_lo
-                self.ov_lo.OffsetHigh = 0
-                self.fileoffset_lo = self.fileoffset_lo + constants.LEN_BUF_LO
-                id_lo = (self.curhalf_lo * constants.LEN_BUF_LO) // 2
-                data_lo = self.buf_lo[id_lo].to_bytes(constants.LEN_BUF_LO, 'little', signed=True)
-                er1 = win32file.WriteFile(self.fid_lo,
-                                         data_lo,
-                                         self.ov_lo)
-                self.curhalf_lo = 1 - self.curhalf_lo
-
-            for i in range(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH):
-                for j in range(constants.CHANNEL_COUNT):
-                    self.buf_hi[self.pointer_hi + j] = int(1000 * self.data[j][i])
-                self.pointer_hi = (self.pointer_hi + constants.CHANNEL_COUNT) % constants.LEN_BUF_HI
-
-            thishalf = self.pointer_hi // (constants.LEN_BUF_HI // 2)
-            if thishalf != self.curhalf_hi:
-                self.ov_hi.Offset = self.fileoffset_hi
-                self.ov_hi.OffsetHigh = 0
-                self.fileoffset_hi = self.fileoffset_hi + constants.LEN_BUF_HI
-                id_hi = (self.curhalf_hi * constants.LEN_BUF_HI) // 2
-                data_hi = self.buf_hi[id_hi].to_bytes(constants.LEN_BUF_HI, 'little', signed=True)
-                er2 = win32file.WriteFile(self.fid_hi,
-                                         data_hi,
-                                         self.ov_hi)
-                self.curhalf_hi = 1 - self.curhalf_hi
+            data = [[int(x * 100) for x in single_ch] for single_ch in self.data]
+            self.fwriter_lo.writerow(self.output_data)
+            self.fwriter_hi.writerow(data)
 
 
 def main():
