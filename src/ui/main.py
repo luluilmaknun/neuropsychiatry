@@ -82,7 +82,7 @@ class MainFrame(tk.Frame):
 
         # Init elements frame
         self.init_elements()
-        self.init_playground(self.h * 0.8)
+        self.init_playground(constants.WINDOW_WIDTH)
         self.update()
 
         # Init nidaqmx task
@@ -349,7 +349,7 @@ class MainFrame(tk.Frame):
 
             # Change record icon and increase record number
             current_id = self.record_number_entry.get()
-            self.record_number.set(str(current_id) + 1)
+            self.record_number.set(str(current_id + 1))
             self.record_canvas.itemconfig(self.record_icon, fill='red3')
 
         # Init nidaqmx task variable
