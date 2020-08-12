@@ -242,7 +242,7 @@ class MainFrame(tk.Frame):
 
         if self.is_target_moved:
             self.target_position_data = self.playground.move_target(1, 0.4, self.phase_time)
-            
+
             self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
                                                                                       1, 0.4, self.phase_time)
 
@@ -284,7 +284,7 @@ class MainFrame(tk.Frame):
                 self.fwriter_lo = writer(self.fid_lo)
 
                 header = ['cursor position', 'target position', 'perturbation', 'current phase', 'condition',
-                          'total score', 'score count', 'current score', 'sampsread']
+                          'total score', 'score count', 'current score', 'samples read']
                 self.fwriter_lo.writerow(header)
             except IOError as e:
                 waserror = True
