@@ -2,6 +2,7 @@ import tkinter as tk
 from math import sin, pi
 
 from src.ui.box import Box
+import src.constants as constants
 
 
 class Playground(tk.Canvas):
@@ -28,12 +29,9 @@ class Playground(tk.Canvas):
         pos_y = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
         position_data = pos_y
         
-        if pos_y > 0:
-            pos_y = pos_y * ((self.height / 2) - self.size_cursor_target)
-        else:
-            pos_y = pos_y * (self.height / 2)
+        pos_y = self.center_y - pos_y * constants.RADIUS - self.size_cursor_target/2
 
-        self.target.move(0, pos_y + self.center_y)
+        self.target.move(0, pos_y)
         return position_data
 
     def move_cursor(self, cursor_pos_read_data, amp, freq, phase_time):
@@ -41,10 +39,7 @@ class Playground(tk.Canvas):
         pos_y = cursor_pos_read_data + pos_y
         position_data = pos_y
 
-        if pos_y > 0:
-            pos_y = pos_y * ((self.height / 2) - self.size_cursor_target)
-        else:
-            pos_y = pos_y * (self.height / 2)
+        pos_y = self.center_y - pos_y * constants.RADIUS - self.size_cursor_target/2
 
-        self.cursor.move(0, pos_y + self.center_y)
+        self.cursor.move(0, pos_y)
         return position_data
