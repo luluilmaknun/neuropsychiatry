@@ -336,7 +336,7 @@ class MainFrame(tk.Frame):
         # Init cursor variable
         self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
         self.cursor_position_data = 0
-        self.delay_pointer = 0   # what is this?
+        self.delay_pointer = 0
         self.perturbation = 0
 
         # Init scoring variable
