@@ -220,7 +220,7 @@ class MainFrame(tk.Frame):
         if self.is_target_moved:
             self.target_position_data = self.playground.move_target(1, 0.1, self.phase_time) #
             
-            self.cursor_position_data = self.playground.move_cursor(self.cursor_position_data, 1, 0.1, self.phase_time)
+            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data, 1, 0.1, self.phase_time)
 
             self.current_score = math.exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
@@ -265,7 +265,7 @@ class MainFrame(tk.Frame):
         self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
         self.cursor_position_data = 0
         self.delay_pointer = 0
-        self.pertubation = 0
+        self.perturbation = 0
 
         # Init scoring variable
         self.total_score = 0
