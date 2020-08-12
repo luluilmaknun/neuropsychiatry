@@ -17,6 +17,8 @@ class MainFrame(tk.Frame):
         self.pack(anchor=tk.CENTER, fill=tk.Y)
         self.root = root
         self.root.title("Neuropsikiatri")
+        self._job = None
+        self.init_running_variable()
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
@@ -41,38 +43,6 @@ class MainFrame(tk.Frame):
                 }
             ],
         }
-
-        # Init nidaqmx task variable
-        self.is_zeroed = False  # button zero if clicked, unknown functionality?
-        self.channel_zero_button_value = [0] * constants.CHANNEL_COUNT
-        self.channel_read_value = [0] * constants.CHANNEL_COUNT
-
-        # Init target variable
-        self.target_position_data = 0
-        self.is_target_moved = False
-
-        # Init cursor variable
-        self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
-        self.cursor_position_data = 0
-        self.delay_pointer = 0   # what is this?
-        self.perturbation = 0
-
-        # Init scoring variable
-        self.total_score = 0
-        self.current_score = 0
-        self.score_count = 0
-        self.norm_score = 0
-
-        # Init trial variable
-        self.phase_time = 0
-        self.current_phase = 0
-        self.next_phase_time = 0
-        self.list_counter = 0
-        self.trial_number = 0
-
-        # Init record data variable
-        self.data = [[]] * constants.CHANNEL_COUNT
-        self.output_data = [0] * constants.NUM_LO
 
         # Init elements frame
         self.init_elements()
@@ -381,6 +351,11 @@ class MainFrame(tk.Frame):
         self.phase_time = 0
         self.current_phase = 0
         self.next_phase_time = 0
+
+        # Init record data variable
+        self.data = [[]] * constants.CHANNEL_COUNT
+        self.output_data = [0] * constants.NUM_LO
+
         if self._job is not None:
             self.root.after_cancel(self._job)
             self._job = None
