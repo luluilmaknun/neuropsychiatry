@@ -99,7 +99,7 @@ class MainFrame(tk.Frame):
             self.norm_score = 0
             self.total_score = 0
             self.is_target_moved = False
-            # update trial number display
+            self.trial_counter.set(self.trial_counter.get() + 1)
         elif self.current_phase == constants.TRACK_PHASE:
             self.is_target_moved = True
             self.set_visibility(True, True)
