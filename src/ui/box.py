@@ -25,3 +25,9 @@ class Box():
         self.y = y
 
         self.canvas.move(self.rectangle, offset_x, offset_y)
+
+    def hide(self):
+        self.canvas.itemconfig(self.rectangle, state=tk.HIDDEN)
+
+    def show(self):
+        self.canvas.itemconfig(self.rectangle, state=tk.NORMAL)

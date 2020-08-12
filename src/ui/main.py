@@ -4,10 +4,8 @@ import os
 import nidaqmx
 import numpy as np
 import math
-import csv
-import win32file
-import win32event
 import src.constants as constants
+from csv import writer
 
 from src.ui.settings import SettingsFrame
 from src.ui.playground import Playground
@@ -65,7 +63,6 @@ class MainFrame(tk.Frame):
         self.current_phase = 0
         self.next_phase_time = 0
         self.list_counter = 0
-        self.is_task_on = False
 
         # Init record data variable
         self.data = [[]] * constants.CHANNEL_COUNT
@@ -100,6 +97,17 @@ class MainFrame(tk.Frame):
         ConstantOverwrite = nidaqmx.constants.OverwriteMode
         self.nidaq_task.in_stream.over_write = ConstantOverwrite.OVERWRITE_UNREAD_SAMPLES
 
+    def set_visibility(self, cursor_vb, target_vb):
+        if cursor_vb:
+            self.playground.show_cursor()
+        else:
+            self.playground.hide_cursor()
+
+        if target_vb:
+            self.playground.show_target()
+        else:
+            self.playground.hide_target()
+
     def init_new_phase(self):
         self.current_phase += 1
         if self.current_phase == constants.END_PHASE:
@@ -111,16 +119,17 @@ class MainFrame(tk.Frame):
             # init trial
         elif self.current_phase == constants.TRACK_PHASE:
             self.is_target_moved = True
-            # make something (in)visible
+            self.set_visibility(True, True)
+            self.playground.hide_score()
             self.next_phase_time = constants.TRACK_TIME * constants.CLOCK_FREQUENCY
         elif self.current_phase == constants.SCORE_PHASE:
-            # make something (in)visible
+            self.set_visibility(False, False)
             self.norm_score = int(1000 * self.total_score / self.score_count)
-            # display score
+            self.playground.show_score(self.norm_score)
             self.next_phase_time = 200
             # toneoff ?
         elif self.current_phase == constants.REST_PHASE:
-            #display '+' character
+            self.playground.show_score('+')
             self.next_phase_time = 100
 
     def init_elements(self):
@@ -264,20 +273,18 @@ class MainFrame(tk.Frame):
             root = record_dir + "\\" + record_name
             waserror = False
 
-            self.ov_hi.hEvent = win32event.CreateEvent(None, 0, 0, None)
-            self.ov_lo.hEvent = win32event.CreateEvent(None, 0, 0, None)
-
             try:
+                # Create files
                 fn_hi = root + "hi-" + str(record_number) + '.csv'
                 self.fid_hi = open(fn_hi, 'w')
-                self.fwriter_hi = csv.writer(self.fid_hi)
+                self.fwriter_hi = writer(self.fid_hi)
 
                 fn_lo = root + "lo-" + str(record_number) + '.csv'
                 self.fid_lo = open(fn_lo, 'w')
-                self.fwriter_lo = csv.writer(self.fid_lo)
+                self.fwriter_lo = writer(self.fid_lo)
 
                 header = ['cursor position', 'target position', 'perturbation', 'current phase', 'condition',
-                          'total score', 'score count', 'current score', 'frame rate']
+                          'total score', 'score count', 'current score', 'sampsread']
                 self.fwriter_lo.writerow(header)
             except IOError as e:
                 waserror = True
@@ -298,7 +305,6 @@ class MainFrame(tk.Frame):
 
             self.nidaq_task.start()
             self.init_new_phase()
-            self.is_task_on = True
             self.run()
 
     def stop(self):
@@ -311,6 +317,7 @@ class MainFrame(tk.Frame):
 
         if self.record_on.get():
             try:
+                # Write data on files
                 data = [[int(x * 100) for x in single_ch] for single_ch in self.data]
 
                 self.fwriter_lo.writerow(self.output_data)
@@ -332,7 +339,6 @@ class MainFrame(tk.Frame):
         # Init target variable
         self.target_position_data = 0
         self.is_target_moved = False
-        self.is_task_on = False
 
         # Init cursor variable
         self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
@@ -372,6 +378,7 @@ class MainFrame(tk.Frame):
         self.output_data[8] = constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
         if self.record_on.get():
+            # Write data on files
             data = [[int(x * 100) for x in single_ch] for single_ch in self.data]
             self.fwriter_lo.writerow(self.output_data)
             self.fwriter_hi.writerow(data)
