@@ -18,6 +18,11 @@ class MainFrame(tk.Frame):
         self.root = root
         self.root.title("Neuropsikiatri")
 
+        # Set MainFrame width and height based on screen size
+        self.w = self.root.winfo_screenwidth()
+        self.h = self.root.winfo_screenheight()
+        self.root.geometry("%dx%d+0+0" % (self.w, self.h))
+
         # Default Settings Conditions on first open
         self.settings = {
             'num_of_conditions': 1,
@@ -63,15 +68,11 @@ class MainFrame(tk.Frame):
         self.current_phase = 0
         self.next_phase_time = 0
         self.list_counter = 0
+        self.trial_number = 0
 
         # Init record data variable
         self.data = [[]] * constants.CHANNEL_COUNT
         self.output_data = [0] * constants.NUM_LO
-
-        # Set MainFrame width and height based on screen size
-        self.w = self.root.winfo_screenwidth()
-        self.h = self.root.winfo_screenheight()
-        self.root.geometry("%dx%d+0+0" % (self.w, self.h))
 
         # Init elements frame
         self.init_elements()
@@ -111,23 +112,35 @@ class MainFrame(tk.Frame):
     def init_new_phase(self):
         self.current_phase += 1
         if self.current_phase == constants.END_PHASE:
+            self.trial_number += 1
+            if self.trial_number > self.settings['num_of_trials']:
+                self.stop()
+                return
             self.current_phase = constants.START_PHASE
         self.phase_time = 0
 
         if self.current_phase == constants.START_PHASE:
-            self.next_phase_time = 100 #temp
-            # init trial
+            self.list_counter += 1
+            if self.list_counter >= self.settings['num_of_conditions']:
+                self.list_counter = 0
+            self.next_phase_time = 100
+            self.score_count = 0
+            self.current_score = 0
+            self.norm_score = 0
+            self.total_score = 0
+            self.is_target_moved = False
+            # update trial number display
         elif self.current_phase == constants.TRACK_PHASE:
             self.is_target_moved = True
             self.set_visibility(True, True)
             self.playground.hide_score()
-            self.next_phase_time = constants.TRACK_TIME * constants.CLOCK_FREQUENCY
+            self.next_phase_time = self.settings['length_of_trial'] * constants.CLOCK_FREQUENCY
         elif self.current_phase == constants.SCORE_PHASE:
             self.set_visibility(False, False)
+            self.is_target_moved = False
             self.norm_score = int(1000 * self.total_score / self.score_count)
             self.playground.show_score(self.norm_score)
             self.next_phase_time = 200
-            # toneoff ?
         elif self.current_phase == constants.REST_PHASE:
             self.playground.show_score('+')
             self.next_phase_time = 100
@@ -143,6 +156,9 @@ class MainFrame(tk.Frame):
         self.btn_settings = tk.Button(self.left_frame, text="Change Settings",
                                       command=self.open_settings)
         self.btn_settings.pack(anchor=tk.NW)
+
+        self.canvas_text = tk.Label(self.left_frame)
+        self.canvas_text.pack()
 
         # SIDE PANEL
         # Record Icon
@@ -205,8 +221,8 @@ class MainFrame(tk.Frame):
         self.record_number_entry.pack(side='left', padx=1)
 
     def init_playground(self, size):
-        self.playground = Playground(self.root, height=size, width=size, bg='black')
-        self.playground.create_boxes(100)
+        self.playground = Playground(self.root, height=constants.WINDOW_HEIGHT, width=constants.WINDOW_WIDTH, bg='black')
+        self.playground.create_boxes(constants.CURSOR_SCALE)
 
     def increase_counter(self, counter='trial'):
         if counter == 'trial':
@@ -232,7 +248,7 @@ class MainFrame(tk.Frame):
             self.channel_zero_button_value[0] = self.channel_read_value[0]
             self.is_zeroed = True
 
-        self.cursor_position_data = self.cursor_position_data_buffer[((self.delay_pointer + constants.DELAY_BUFFER_LEN - 1 * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)] # still need to round
+        self.cursor_position_data = self.cursor_position_data_buffer[round((self.delay_pointer + constants.DELAY_BUFFER_LEN - self.settings['conditions'][self.list_counter]['delay'] * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)]
         if abs(self.cursor_position_data) > 2000:
             self.cursor_position_data = np.sign(self.cursor_position_data) * 2000
         self.phase_time += 1
@@ -240,11 +256,11 @@ class MainFrame(tk.Frame):
         if self.phase_time == self.next_phase_time:
             self.init_new_phase()
 
+        self.canvas_text['text'] = 'phase time: %.1d\nconditions: %.1d\nphase: %.1d\nscore: %.1d' % (self.phase_time, self.list_counter, self.current_phase, self.norm_score)
         if self.is_target_moved:
-            self.target_position_data = self.playground.move_target(1, 0.4, self.phase_time)
-
-            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
-                                                                                      1, 0.4, self.phase_time)
+            self.target_position_data = self.playground.move_target(1, 0.1, self.phase_time) #
+            
+            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data, 1, 0.1, self.phase_time)
 
             self.current_score = math.exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
@@ -331,8 +347,15 @@ class MainFrame(tk.Frame):
                 self.record_number.set(current_id + 1)
                 self.record_canvas.itemconfig(self.record_icon, fill='red3')
 
+        self.init_running_variable()
+    
+    def zero_pressed(self):
+        self.channel_zero_button_value[0] = self.channel_read_value[0]
+        self.is_zeroed = True
+
+    def init_running_variable(self):
         # Init nidaqmx task variable
-        self.is_zeroed = False  # button zero if clicked, unknown functionality?
+        self.is_zeroed = False
         self.channel_zero_button_value = [0] * constants.CHANNEL_COUNT
         self.channel_read_value = [0] * constants.CHANNEL_COUNT
 
@@ -353,10 +376,11 @@ class MainFrame(tk.Frame):
         self.norm_score = 0
 
         # Init trial variable
+        self.list_counter = -1
+        self.trial_number = 0
         self.phase_time = 0
         self.current_phase = 0
         self.next_phase_time = 0
-
         if self._job is not None:
             self.root.after_cancel(self._job)
             self._job = None
