@@ -2,9 +2,9 @@ import tkinter as tk
 import tkinter.filedialog as tk_fd
 import os
 import nidaqmx
-import numpy as np
-import math
 import src.constants as constants
+from math import exp
+from numpy import sign
 from csv import writer
 
 from src.ui.settings import SettingsFrame
@@ -220,7 +220,7 @@ class MainFrame(tk.Frame):
 
         self.cursor_position_data = self.cursor_position_data_buffer[round((self.delay_pointer + constants.DELAY_BUFFER_LEN - self.settings['conditions'][self.list_counter]['delay'] * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)]
         if abs(self.cursor_position_data) > 2000:
-            self.cursor_position_data = np.sign(self.cursor_position_data) * 2000
+            self.cursor_position_data = sign(self.cursor_position_data) * 2000
         self.phase_time += 1
 
         if self.phase_time == self.next_phase_time:
@@ -232,7 +232,7 @@ class MainFrame(tk.Frame):
             
             self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data, 1, 0.1, self.phase_time)
 
-            self.current_score = math.exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
+            self.current_score = exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
             self.total_score += self.current_score
         else:
