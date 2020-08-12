@@ -5,10 +5,10 @@ import time
 import nidaqmx
 import numpy as np
 import math
-import constants as constants
+import src.constants as constants
 
-from settings import SettingsFrame
-from playground import Playground
+from src.ui.settings import SettingsFrame
+from src.ui.playground import Playground
 
 
 class MainFrame(tk.Frame):
@@ -19,8 +19,6 @@ class MainFrame(tk.Frame):
         self.root.title("Neuropsikiatri")
         self._job = None
         self.init_running_variable()
-        self.wtext = tk.Label(self.root)
-        self.wtext.pack()
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
@@ -57,8 +55,8 @@ class MainFrame(tk.Frame):
             "Dev1/ai0, Dev1/ai4",
             0,
             nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-            0.15,#constants.READ_DATA_MIN_VALUE,
-            0.2,#constants.READ_DATA_MAX_VALUE,
+            constants.READ_DATA_MIN_VALUE,
+            constants.READ_DATA_MAX_VALUE,
             nidaqmx.constants.VoltageUnits.VOLTS,
             0)
         self.nidaq_task.timing.cfg_samp_clk_timing(
@@ -79,7 +77,6 @@ class MainFrame(tk.Frame):
                 return
             self.current_phase = constants.START_PHASE
         self.phase_time = 0
-        self.wtext['text'] = 'trial: %.1d\nconditions: %.1d\nphase: %.1d' % (self.trial_number, self.list_counter, self.current_phase)
 
         if self.current_phase == constants.START_PHASE:
             self.list_counter += 1
@@ -94,8 +91,9 @@ class MainFrame(tk.Frame):
             # update trial number display
         elif self.current_phase == constants.TRACK_PHASE:
             self.is_target_moved = True
-            self.next_phase_time = self.settings['length_of_trial'] * 1000 / constants.CLOCK_FREQUENCY
+            self.next_phase_time = self.settings['length_of_trial'] * constants.CLOCK_FREQUENCY
         elif self.current_phase == constants.SCORE_PHASE:
+            self.is_target_moved = False
             self.norm_score = int(1000 * self.total_score / self.score_count)
             # display score
             self.next_phase_time = 200
@@ -114,6 +112,9 @@ class MainFrame(tk.Frame):
         self.btn_settings = tk.Button(self.left_frame, text="Change Settings",
                                       command=self.open_settings)
         self.btn_settings.pack(anchor=tk.NW)
+
+        self.canvas_text = tk.Label(self.left_frame)
+        self.canvas_text.pack()
 
         # SIDE PANEL
         # Record Icon
@@ -178,8 +179,8 @@ class MainFrame(tk.Frame):
         self.experiment_number_entry.pack(side='left', padx=1)
 
     def init_playground(self, size):
-        self.playground = Playground(self.root, height=size, width=size, bg='black')
-        self.playground.create_boxes(100)
+        self.playground = Playground(self.root, height=constants.WINDOW_HEIGHT, width=constants.WINDOW_WIDTH, bg='black')
+        self.playground.create_boxes(120)
 
     def increase_counter(self, counter='trial'):
         if counter == 'trial':
@@ -197,7 +198,7 @@ class MainFrame(tk.Frame):
 
     def run(self):
         data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
-        data_dump = self.nidaq_task.read(100)
+        #data_dump = self.nidaq_task.read(100)
         self.channel_read_value[0] = sum(data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
         self.channel_read_value[1] = sum(data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
@@ -215,10 +216,11 @@ class MainFrame(tk.Frame):
         if self.phase_time == self.next_phase_time:
             self.init_new_phase()
 
+        self.canvas_text['text'] = 'phase time: %.1d\nconditions: %.1d\nphase: %.1d\nscore: %.1d' % (self.phase_time, self.list_counter, self.current_phase, self.norm_score)
         if self.is_target_moved:
-            self.target_position_data = self.playground.move_target(1, 0.4, self.phase_time) #
+            self.target_position_data = self.playground.move_target(1, 0.1, self.phase_time) #
             
-            self.cursor_position_data = self.playground.move_cursor(self.cursor_position_data, 1, 0.4, self.phase_time)
+            self.cursor_position_data = self.playground.move_cursor(self.cursor_position_data, 1, 0.1, self.phase_time)
 
             self.current_score = math.exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
@@ -228,7 +230,7 @@ class MainFrame(tk.Frame):
             self.target_position_data = 0
         
         self.delay_pointer = (self.delay_pointer + 1) % constants.DELAY_BUFFER_LEN
-        self._job = self.root.after(20, self.run)
+        self._job = self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
 
     def start(self):
         self.playground.move_target(0, 0, self.phase_time)
