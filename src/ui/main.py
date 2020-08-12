@@ -22,7 +22,7 @@ class MainFrame(tk.Frame):
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
-        self.h = self.root.winfo_screenheight()
+        self.h = 900
         self.root.geometry("%dx%d+0+0" % (self.w, self.h))
 
         # Default Settings Conditions on first open
@@ -118,9 +118,9 @@ class MainFrame(tk.Frame):
     def init_elements(self):
         # FRAMING
         self.left_frame = tk.Frame(self.root)
-        self.left_frame.pack(side='left', anchor=tk.W, padx=20, pady=20, fill=tk.BOTH, expand=True)
+        self.left_frame.pack(side='left', anchor=tk.CENTER, padx=20, pady=20, fill=tk.Y, expand=True)
         self.right_frame = tk.Frame(self.root)
-        self.right_frame.pack(side='right', anchor=tk.N, padx=20, pady=20, fill=tk.BOTH, expand=True)
+        self.right_frame.pack(side='right', anchor=tk.CENTER, padx=20, pady=20, fill=tk.Y, expand=True)
 
         # BUTTON "Change Settings"
         self.btn_settings = tk.Button(self.left_frame, text="Change Settings",
@@ -136,7 +136,7 @@ class MainFrame(tk.Frame):
             .grid(row=0, column=0, sticky=tk.NW, pady=20, padx=15)
         self.record_canvas = tk.Canvas(self.right_frame, width=60, height=60)
         self.record_canvas.grid(row=0, column=1)
-        self.record_icon = self.record_canvas.create_oval(0, 0, 60, 60,
+        self.record_icon = self.record_canvas.create_oval(2, 2, 60, 60,
                                                           fill="red3", outline="")
 
         # Trial Counter
@@ -145,7 +145,7 @@ class MainFrame(tk.Frame):
         self.trial_counter = tk.IntVar()
         self.trial_counter.set(0)
         self.trial_counter_label = tk.Label(self.right_frame, textvariable=self.trial_counter,
-                                            font=("Arial", 19))
+                                            font=("Arial", 22, 'bold'), fg='blue')
         self.trial_counter_label.grid(row=1, column=1, sticky=tk.W)
 
         # Sample Counter
@@ -159,11 +159,11 @@ class MainFrame(tk.Frame):
 
         # BUTTON STOP & ZERO
         self.button_frame = tk.Frame(self.right_frame)
-        self.button_frame.grid(columnspan=2, sticky=tk.E)
+        self.button_frame.grid(columnspan=2, sticky=tk.NSEW, pady=65)
         self.start_stop_button = tk.Button(self.button_frame, text="Start", width=10, font=("Arial", 16), command=self.start)
-        self.start_stop_button.pack(fill=tk.BOTH, expand=True)
+        self.start_stop_button.pack(fill=tk.BOTH, expand=True, pady=8)
         self.zero_button = tk.Button(self.button_frame, text="Zero", width=10, font=("Arial", 16), command=self.zero_pressed)
-        self.zero_button.pack(fill=tk.BOTH, expand=True)
+        self.zero_button.pack(fill=tk.BOTH, expand=True, pady=8)
 
         # RADIOBUTTON RECORD
         self.record_on = tk.BooleanVar()
@@ -175,20 +175,20 @@ class MainFrame(tk.Frame):
         self.file_frame.grid(columnspan=2, sticky=tk.E)
         self.record_dir = tk.StringVar()
         self.record_dir.set(os.path.expanduser("~"))
-        self.record_dir_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=25,
+        self.record_dir_entry = tk.Entry(self.file_frame, font=("Arial", 14), width=22,
                                          textvariable=self.record_dir)
-        self.record_dir_entry.pack()
+        self.record_dir_entry.pack(pady=4, ipadx=2, ipady=2, anchor=tk.CENTER)
         self.record_dir_entry.bind("<1>", self.change_dir)
 
         self.record_name = tk.StringVar(value='test')
-        self.record_name_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=18,
+        self.record_name_entry = tk.Entry(self.file_frame, font=("Arial", 14), width=16,
                                               textvariable=self.record_name)
-        self.record_name_entry.pack(side='left', padx=2)
+        self.record_name_entry.pack(side='left', padx=2, ipadx=2, ipady=2, anchor=tk.CENTER)
 
         self.record_number = tk.IntVar(value=1)
-        self.record_number_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=6,
+        self.record_number_entry = tk.Entry(self.file_frame, font=("Arial", 14), width=5,
                                                 textvariable=self.record_number)
-        self.record_number_entry.pack(side='left', padx=1)
+        self.record_number_entry.pack(side='left', padx=2, ipadx=2, ipady=2, anchor=tk.CENTER)
 
     def init_playground(self, size):
         self.playground = Playground(self.root, height=constants.WINDOW_HEIGHT, width=constants.WINDOW_WIDTH, bg='black')
