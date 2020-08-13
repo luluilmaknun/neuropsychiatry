@@ -1,11 +1,11 @@
 import tkinter as tk
 import tkinter.filedialog as tk_fd
-from os.path import expanduser
-import time
+import os
 import nidaqmx
-import numpy as np
-import math
 import src.constants as constants
+from math import exp
+from numpy import sign
+from csv import writer
 
 from src.ui.settings import SettingsFrame
 from src.ui.playground import Playground
@@ -46,7 +46,7 @@ class MainFrame(tk.Frame):
 
         # Init elements frame
         self.init_elements()
-        self.init_playground(self.h * 0.8)
+        self.init_playground(constants.WINDOW_WIDTH)
         self.update()
 
         # Init nidaqmx task
@@ -68,6 +68,17 @@ class MainFrame(tk.Frame):
         ConstantOverwrite = nidaqmx.constants.OverwriteMode
         self.nidaq_task.in_stream.over_write = ConstantOverwrite.OVERWRITE_UNREAD_SAMPLES
 
+    def set_visibility(self, cursor_vb, target_vb):
+        if cursor_vb:
+            self.playground.show_cursor()
+        else:
+            self.playground.hide_cursor()
+
+        if target_vb:
+            self.playground.show_target()
+        else:
+            self.playground.hide_target()
+
     def init_new_phase(self):
         self.current_phase += 1
         if self.current_phase == constants.END_PHASE:
@@ -79,6 +90,8 @@ class MainFrame(tk.Frame):
         self.phase_time = 0
 
         if self.current_phase == constants.START_PHASE:
+            self.set_visibility(True, True)
+            self.playground.hide_score()
             self.list_counter += 1
             if self.list_counter >= self.settings['num_of_conditions']:
                 self.list_counter = 0
@@ -88,17 +101,20 @@ class MainFrame(tk.Frame):
             self.norm_score = 0
             self.total_score = 0
             self.is_target_moved = False
-            # update trial number display
+            self.trial_counter.set(self.trial_counter.get() + 1)
         elif self.current_phase == constants.TRACK_PHASE:
             self.is_target_moved = True
+            self.set_visibility(True, True)
+            self.playground.hide_score()
             self.next_phase_time = self.settings['length_of_trial'] * constants.CLOCK_FREQUENCY
         elif self.current_phase == constants.SCORE_PHASE:
+            self.set_visibility(False, False)
             self.is_target_moved = False
             self.norm_score = int(1000 * self.total_score / self.score_count)
-            # display score
+            self.playground.show_score(self.norm_score)
             self.next_phase_time = 200
         elif self.current_phase == constants.REST_PHASE:
-            #display '+' character
+            self.playground.show_score('+')
             self.next_phase_time = 100
 
     def init_elements(self):
@@ -122,10 +138,8 @@ class MainFrame(tk.Frame):
             .grid(row=0, column=0, sticky=tk.NW, pady=20, padx=15)
         self.record_canvas = tk.Canvas(self.right_frame, width=60, height=60)
         self.record_canvas.grid(row=0, column=1)
-        self.record_icon_out = self.record_canvas.create_oval(0, 0, 60, 60,
-                                                              fill="red3", outline="red3")
-        self.record_icon_in = self.record_canvas.create_oval(15, 15, 45, 45,
-                                                             fill="red", outline="red")
+        self.record_icon = self.record_canvas.create_oval(0, 0, 60, 60,
+                                                          fill="red3", outline="")
 
         # Trial Counter
         tk.Label(self.right_frame, text="Trial counter", font=("Arial", 16)) \
@@ -154,33 +168,33 @@ class MainFrame(tk.Frame):
         self.zero_button.pack(fill=tk.BOTH, expand=True)
 
         # RADIOBUTTON RECORD
-        self.record_flag = tk.BooleanVar()
-        tk.Checkbutton(self.button_frame, text="Record", var=self.record_flag, font=("Arial", 16),
+        self.record_on = tk.BooleanVar()
+        tk.Checkbutton(self.button_frame, text="Record", var=self.record_on, font=("Arial", 16),
                        onvalue=True, offvalue=False).pack()
 
         # FILE MANAGER
         self.file_frame = tk.Frame(self.right_frame)
         self.file_frame.grid(columnspan=2, sticky=tk.E)
         self.record_dir = tk.StringVar()
-        self.record_dir.set(expanduser("~"))
+        self.record_dir.set(os.path.expanduser("~"))
         self.record_dir_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=25,
                                          textvariable=self.record_dir)
         self.record_dir_entry.pack()
         self.record_dir_entry.bind("<1>", self.change_dir)
 
-        self.experiment_name = tk.StringVar()
-        self.experiment_name_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=18,
-                                              textvariable=self.experiment_name)
-        self.experiment_name_entry.pack(side='left', padx=2)
+        self.record_name = tk.StringVar(value='test')
+        self.record_name_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=18,
+                                              textvariable=self.record_name)
+        self.record_name_entry.pack(side='left', padx=2)
 
-        self.experiment_number = tk.IntVar()
-        self.experiment_number_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=6,
-                                                textvariable=self.experiment_number)
-        self.experiment_number_entry.pack(side='left', padx=1)
+        self.record_number = tk.IntVar(value=1)
+        self.record_number_entry = tk.Entry(self.file_frame, font=("Arial", 12), width=6,
+                                                textvariable=self.record_number)
+        self.record_number_entry.pack(side='left', padx=1)
 
     def init_playground(self, size):
         self.playground = Playground(self.root, height=constants.WINDOW_HEIGHT, width=constants.WINDOW_WIDTH, bg='black')
-        self.playground.create_boxes(120)
+        self.playground.create_boxes(constants.CURSOR_SCALE)
 
     def increase_counter(self, counter='trial'):
         if counter == 'trial':
@@ -194,13 +208,11 @@ class MainFrame(tk.Frame):
     def open_settings(self):
         self.top_level = tk.Toplevel(self.root)
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
-        print(self.settings)
 
     def run(self):
-        data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
-        #data_dump = self.nidaq_task.read(100)
-        self.channel_read_value[0] = sum(data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
-        self.channel_read_value[1] = sum(data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+        self.data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
+        self.channel_read_value[0] = sum(self.data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+        self.channel_read_value[1] = sum(self.data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
         # One channel data processing
         self.cursor_position_data_buffer[self.delay_pointer] = (self.channel_read_value[0] - self.channel_zero_button_value[0]) * constants.CURSOR_SCALE - 1
@@ -210,7 +222,7 @@ class MainFrame(tk.Frame):
 
         self.cursor_position_data = self.cursor_position_data_buffer[round((self.delay_pointer + constants.DELAY_BUFFER_LEN - self.settings['conditions'][self.list_counter]['delay'] * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)]
         if abs(self.cursor_position_data) > 2000:
-            self.cursor_position_data = np.sign(self.cursor_position_data) * 2000
+            self.cursor_position_data = sign(self.cursor_position_data) * 2000
         self.phase_time += 1
 
         if self.phase_time == self.next_phase_time:
@@ -222,29 +234,91 @@ class MainFrame(tk.Frame):
             
             self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data, 1, 0.1, self.phase_time)
 
-            self.current_score = math.exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
+            self.current_score = exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
             self.total_score += self.current_score
         else:
             self.current_score = 0
             self.target_position_data = 0
-        
+
+        self.create_output_data()
+
         self.delay_pointer = (self.delay_pointer + 1) % constants.DELAY_BUFFER_LEN
         self._job = self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
 
     def start(self):
         self.playground.move_target(0, 0, self.phase_time)
         self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
-        self.start_stop_button['text'] = "Stop"
-        self.start_stop_button['command'] = self.stop
-        self.nidaq_task.start()
-        self.init_new_phase()
-        self.run()
+
+        waserror = False
+        if self.record_on.get():
+            record_dir = self.record_dir.get()
+            record_name = self.record_name.get()
+            record_number = self.record_number.get()
+
+            if not os.path.isdir(record_dir):
+                os.makedirs(record_dir)
+            root = record_dir + "\\" + record_name
+            waserror = False
+
+            try:
+                # Create files
+                fn_hi = root + "hi-" + str(record_number) + '.csv'
+                self.fid_hi = open(fn_hi, 'w')
+                self.fwriter_hi = writer(self.fid_hi)
+
+                fn_lo = root + "lo-" + str(record_number) + '.csv'
+                self.fid_lo = open(fn_lo, 'w')
+                self.fwriter_lo = writer(self.fid_lo)
+
+                header = ['cursor position', 'target position', 'perturbation', 'current phase', 'condition',
+                          'total score', 'score count', 'current score', 'samples read']
+                self.fwriter_lo.writerow(header)
+            except IOError as e:
+                waserror = True
+                self.messagebox.showerror(title='I/O Error', message=str(e))
+
+            if not waserror:
+                self.record_canvas.itemconfig(self.record_icon, fill='lime green')
+
+        if not waserror:
+            self.start_stop_button['text'] = "Stop"
+            self.start_stop_button['command'] = self.stop
+            self.record_dir_entry['state'] = 'disabled'
+            self.record_name_entry['state'] = 'disabled'
+            self.record_number_entry['state'] = 'disabled'
+
+            self.trial_counter.set(0)
+            self.current_phase = 0
+
+            self.nidaq_task.start()
+            self.init_new_phase()
+            self.run()
 
     def stop(self):
         self.start_stop_button['text'] = "Start"
         self.start_stop_button['command'] = self.start
+        self.record_dir_entry['state'] = 'normal'
+        self.record_name_entry['state'] = 'normal'
+        self.record_number_entry['state'] = 'normal'
         self.nidaq_task.stop()
+
+        if self.record_on.get():
+            try:
+                # Write data on files
+                data = [[int(x * 100) for x in single_ch] for single_ch in self.data]
+
+                self.fwriter_lo.writerow(self.output_data)
+                self.fwriter_hi.writerow(data)
+            finally:
+                self.fid_lo.close()
+                self.fid_hi.close()
+
+                # Change record icon and increase record number
+                current_id = self.record_number.get()
+                self.record_number.set(current_id + 1)
+                self.record_canvas.itemconfig(self.record_icon, fill='red3')
+
         self.init_running_variable()
     
     def zero_pressed(self):
@@ -279,9 +353,36 @@ class MainFrame(tk.Frame):
         self.phase_time = 0
         self.current_phase = 0
         self.next_phase_time = 0
+
+        # Init record data variable
+        self.data = [[]] * constants.CHANNEL_COUNT
+        self.output_data = [0] * constants.NUM_LO
+
         if self._job is not None:
             self.root.after_cancel(self._job)
             self._job = None
+
+    def zero_pressed(self):
+        self.channel_zero_button_value[0] = self.channel_read_value[0]
+        self.is_zeroed = True
+
+    def create_output_data(self):
+        # data output record
+        self.output_data[0] = int(self.cursor_position_data * 500)
+        self.output_data[1] = int(self.target_position_data * 500)
+        self.output_data[2] = int(self.perturbation * 500)
+        self.output_data[3] = self.current_phase
+        self.output_data[4] = self.list_counter + 1
+        self.output_data[5] = int(self.total_score)
+        self.output_data[6] = self.score_count
+        self.output_data[7] = int(self.current_score * 1000)
+        self.output_data[8] = constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+
+        if self.record_on.get():
+            # Write data on files
+            data = [[int(x * 100) for x in single_ch] for single_ch in self.data]
+            self.fwriter_lo.writerow(self.output_data)
+            self.fwriter_hi.writerow(data)
 
 
 def main():
