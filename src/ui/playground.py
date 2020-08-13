@@ -15,6 +15,9 @@ class Playground(tk.Canvas):
         self.center_x = self.width / 2
         self.STATIC_SIZE_H = 360
 
+        self.score_label = self.create_text([self.center_x, self.center_y], font=('Arial', 100, 'bold'), fill='lime green', text='0')
+        self.hide_score()
+
         self.clock_freq = 50
 
     def create_boxes(self, size):
@@ -28,7 +31,7 @@ class Playground(tk.Canvas):
     def move_target(self, amp, freq, phase_time):
         pos_y = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
         position_data = pos_y
-        
+
         pos_y = self.center_y - pos_y * constants.RADIUS - self.size_cursor_target/2
 
         self.target.move(0, pos_y)
@@ -43,3 +46,21 @@ class Playground(tk.Canvas):
 
         self.cursor.move(0, pos_y)
         return position_data, pert
+
+    def show_score(self, score):
+        self.itemconfig(self.score_label, text=str(score), state=tk.NORMAL)
+
+    def hide_score(self):
+        self.itemconfig(self.score_label, text='', state=tk.HIDDEN)
+
+    def show_cursor(self):
+        self.cursor.show()
+
+    def hide_cursor(self):
+        self.cursor.hide()
+
+    def show_target(self):
+        self.target.show()
+
+    def hide_target(self):
+        self.target.hide()
