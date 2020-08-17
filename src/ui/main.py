@@ -35,12 +35,12 @@ class MainFrame(tk.Frame):
                 {
                     'condition': 1,
                     'delay': 0,
-                    'cursor_freq': 0.5,
-                    'target_freq': 0.2,
+                    'cursor_freq': 0.2,
+                    'target_freq': 0.5,
                     'cursor_amp': 1,
                     'target_amp': 1,
                     'visibility_cursor': 1,
-                    'visibility_target': 0,
+                    'visibility_target': 1,
                 },
             ],
         }
