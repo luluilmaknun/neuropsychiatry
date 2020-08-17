@@ -30,23 +30,24 @@ class MainFrame(tk.Frame):
             'num_of_conditions': 1,
             'num_of_trials': 10,
             'length_of_trial': 10,
-            'size_cursor_target': 30,
+            'size_cursor_target': 100,
             'conditions': [
                 {
                     'condition': 1,
-                    'delay': 0.5,
-                    'perturbation': 5,
-                    'cursor_pert_size': 5,
-                    'target_pert_size': 5,
+                    'delay': 0,
+                    'cursor_freq': 0.5,
+                    'target_freq': 0.2,
+                    'cursor_amp': 1,
+                    'target_amp': 1,
                     'visibility_cursor': 1,
                     'visibility_target': 0,
-                }
+                },
             ],
         }
 
         # Init elements frame
         self.init_elements()
-        self.init_playground(constants.WINDOW_WIDTH)
+        self.init_playground()
         self.update()
 
         # Init nidaqmx task
@@ -69,12 +70,15 @@ class MainFrame(tk.Frame):
         self.nidaq_task.in_stream.over_write = ConstantOverwrite.OVERWRITE_UNREAD_SAMPLES
 
     def set_visibility(self, cursor_vb, target_vb):
-        if cursor_vb:
+        cursor_vb_settings = self.settings['conditions'][self.list_counter]['visibility_cursor']
+        target_vb_settings = self.settings['conditions'][self.list_counter]['visibility_target']
+
+        if cursor_vb and cursor_vb_settings:
             self.playground.show_cursor()
         else:
             self.playground.hide_cursor()
 
-        if target_vb:
+        if target_vb and target_vb_settings:
             self.playground.show_target()
         else:
             self.playground.hide_target()
@@ -100,6 +104,12 @@ class MainFrame(tk.Frame):
             self.total_score = 0
             self.is_target_moved = False
             self.trial_counter.set(self.trial_counter.get() + 1)
+            # Set Current Conditions
+            self.delay = self.settings['conditions'][self.list_counter]['delay']
+            self.cursor_amp = self.settings['conditions'][self.list_counter]['cursor_amp']
+            self.target_amp = self.settings['conditions'][self.list_counter]['target_amp']
+            self.cursor_freq = self.settings['conditions'][self.list_counter]['cursor_freq']
+            self.target_freq = self.settings['conditions'][self.list_counter]['target_freq']
         elif self.current_phase == constants.TRACK_PHASE:
             self.is_target_moved = True
             self.set_visibility(True, True)
@@ -190,7 +200,7 @@ class MainFrame(tk.Frame):
                                                 textvariable=self.record_number)
         self.record_number_entry.pack(side='left', padx=2, ipadx=2, ipady=2, anchor=tk.CENTER)
 
-    def init_playground(self, size):
+    def init_playground(self):
         self.playground = Playground(self.root, height=constants.WINDOW_HEIGHT, width=constants.WINDOW_WIDTH, bg='black')
         self.playground.create_boxes(constants.CURSOR_SCALE)
 
@@ -206,6 +216,7 @@ class MainFrame(tk.Frame):
     def open_settings(self):
         self.top_level = tk.Toplevel(self.root)
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
+        self.playground.set_cursor_target_size(self.settings['size_cursor_target'])
 
     def run(self):
         self.data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
@@ -213,12 +224,15 @@ class MainFrame(tk.Frame):
         self.channel_read_value[1] = sum(self.data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
         # One channel data processing
-        self.cursor_position_data_buffer[self.delay_pointer] = (self.channel_read_value[0] - self.channel_zero_button_value[0]) * constants.CURSOR_SCALE - 1
+        cur_data = (self.channel_read_value[0] - self.channel_zero_button_value[0]) * constants.CURSOR_SCALE - 1
+        self.cursor_position_data_buffer[self.delay_pointer] = cur_data
         if not self.is_zeroed:
             self.channel_zero_button_value[0] = self.channel_read_value[0]
             self.is_zeroed = True
 
-        self.cursor_position_data = self.cursor_position_data_buffer[round((self.delay_pointer + constants.DELAY_BUFFER_LEN - self.settings['conditions'][self.list_counter]['delay'] * constants.CLOCK_FREQUENCY) % constants.DELAY_BUFFER_LEN)]
+        cur_data_id = round((self.delay_pointer + constants.DELAY_BUFFER_LEN - self.delay * constants.CLOCK_FREQUENCY) %
+                            constants.DELAY_BUFFER_LEN)
+        self.cursor_position_data = self.cursor_position_data_buffer[cur_data_id]
         if abs(self.cursor_position_data) > 2000:
             self.cursor_position_data = sign(self.cursor_position_data) * 2000
         self.phase_time += 1
@@ -226,11 +240,16 @@ class MainFrame(tk.Frame):
         if self.phase_time == self.next_phase_time:
             self.init_new_phase()
 
-        self.canvas_text['text'] = 'phase time: %.1d\nconditions: %.1d\nphase: %.1d\nscore: %.1d' % (self.phase_time, self.list_counter, self.current_phase, self.norm_score)
+        self.canvas_text['text'] = 'phase time: %.1d\nconditions: %.1d\nphase: %.1d\nscore: %.1d' % (self.phase_time,
+                                                                                                     self.list_counter,
+                                                                                                     self.current_phase,
+                                                                                                     self.norm_score)
         if self.is_target_moved:
-            self.target_position_data = self.playground.move_target(1, 0.1, self.phase_time) #
-            
-            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data, 1, 0.1, self.phase_time)
+            self.target_position_data = self.playground.move_target(self.target_amp, self.target_freq, self.phase_time)
+            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
+                                                                                       self.cursor_amp,
+                                                                                       self.cursor_freq,
+                                                                                       self.phase_time)
 
             self.current_score = exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1

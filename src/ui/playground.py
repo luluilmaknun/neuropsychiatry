@@ -64,3 +64,9 @@ class Playground(tk.Canvas):
 
     def hide_target(self):
         self.target.hide()
+
+    def set_cursor_target_size(self, size):
+        self.target.delete()
+        self.cursor.delete()
+
+        self.create_boxes(size)
