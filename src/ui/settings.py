@@ -90,12 +90,13 @@ class SettingsFrame(tk.Toplevel):
                        'Visibility of Cursor',
                        'Visibility of Target',]
         self.fields_key = list(self.conditions[0].keys())
+        self.num_of_conditions = len(self.conditions)
 
         for i in range(len(self.fields)):
             tk.Label(self.conditions_frame, text=self.fields[i], wraplength=70, width=9).grid(row=0, column=i, sticky=tk.W,
                                                                                               padx=5, pady=5)
 
-        for i in range(len(self.conditions)):
+        for i in range(self.num_of_conditions):
             self.vals.append([])
             for j in range(len(self.fields)):
                 if self.fields[j] == 'Condition':
@@ -108,23 +109,26 @@ class SettingsFrame(tk.Toplevel):
                     ent.grid(row=i + 1, column=j, pady=5)
                     self.vals[i].append(val)
 
+        for i in range(self.num_of_conditions):
+            tk.Button(self.conditions_frame, text='x', command=(lambda: self.delete_condition(i + 1))) \
+                .grid(row=i + 1, column= len(self.fields)+1, padx=10, ipadx=5)
+
     def save_settings(self):
-        num_of_conditions = self.conditions_frame.grid_size()[1] - 1
-        self.settings_dict['num_of_conditions'] = num_of_conditions
+        self.settings_dict['num_of_conditions'] = self.num_of_conditions
         self.settings_dict['length_of_trial'] = self.length_of_trial.get()
         self.settings_dict['size_cursor_target'] = self.size_cursor_target.get()
         self.settings_dict['num_of_trials'] = self.num_of_trials.get()
 
-        conditions = []
-        for i in range(num_of_conditions):
-            conditions.append({})
+        self.conditions = []
+        for i in range(self.num_of_conditions):
+            self.conditions.append({})
             for j in range(len(self.fields_key)):
                 if self.fields[j] == 'Condition':
-                    conditions[i][self.fields_key[j]] = i + 1
+                    self.conditions[i][self.fields_key[j]] = i + 1
                 else:
-                    conditions[i][self.fields_key[j]] = self.vals[i][j - 1].get()
+                    self.conditions[i][self.fields_key[j]] = self.vals[i][j - 1].get()
 
-        self.settings_dict['conditions'] = conditions
+        self.settings_dict['conditions'] = self.conditions
 
     def get_settings(self):
         return self.settings_dict
@@ -134,4 +138,31 @@ class SettingsFrame(tk.Toplevel):
         return self.settings_dict
 
     def add_condition(self):
-        return
+        self.num_of_conditions += 1
+        self.vals.append([])
+
+        for j in range(len(self.fields)):
+            if self.fields[j] == 'Condition':
+                ent = tk.Label(self.conditions_frame, text=self.num_of_conditions)
+                ent.grid(row=self.num_of_conditions, column=j)
+            else:
+                val = tk.DoubleVar()
+                ent = tk.Entry(self.conditions_frame, textvariable=val, width=8)
+                ent.grid(row=self.num_of_conditions, column=j, pady=5)
+                self.vals[self.num_of_conditions - 1].append(val)
+
+        id = self.num_of_conditions
+        tk.Button(self.conditions_frame, text='x', command=(lambda: self.delete_condition(id))) \
+            .grid(row=self.num_of_conditions, column=len(self.fields) + 1, padx=10, ipadx=5)
+
+    def delete_condition(self, row):
+        l = list(self.conditions_frame.grid_slaves(row=self.num_of_conditions))
+        self.num_of_conditions -= 1
+
+        for r in range(row, self.num_of_conditions + 1):
+            for c in range(len(self.fields_key)):
+                self.vals[r-1][c-1].set(self.vals[r][c-1].get())
+
+        del self.vals[-1]
+        for w in l:
+            w.destroy()
