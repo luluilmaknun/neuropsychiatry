@@ -94,6 +94,8 @@ class MainFrame(tk.Frame):
         self.phase_time = 0
 
         if self.current_phase == constants.START_PHASE:
+            self.set_visibility(True, True)
+            self.playground.hide_score()
             self.list_counter += 1
             if self.list_counter >= self.settings['num_of_conditions']:
                 self.list_counter = 0
@@ -104,6 +106,7 @@ class MainFrame(tk.Frame):
             self.total_score = 0
             self.is_target_moved = False
             self.trial_counter.set(self.trial_counter.get() + 1)
+
             # Set Current Conditions
             self.delay = self.settings['conditions'][self.list_counter]['delay']
             self.cursor_amp = self.settings['conditions'][self.list_counter]['cursor_amp']
