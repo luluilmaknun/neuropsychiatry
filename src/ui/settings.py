@@ -1,5 +1,4 @@
 import tkinter as tk
-from src.ui.conditions import ConditionsFrame
 
 
 class SettingsFrame(tk.Toplevel):
@@ -18,17 +17,6 @@ class SettingsFrame(tk.Toplevel):
 
         self.conditions_frame = tk.Frame(self.root, highlightbackground='black', highlightthickness=1)
         self.conditions_frame.grid(row=2, column=0, padx=15, pady=12, ipady=10)
-
-        # # Number of conditions
-        # tk.Label(self.top_frame, text="Number of conditions", font=('Arial', 11)) \
-        #     .grid(row=0, column=0, sticky=tk.W, padx=12, pady=(6, 0))
-        # tk.Label(self.top_frame, text="(fill in with numbers)", font=('Arial', 8, 'italic')) \
-        #     .grid(row=1, column=0, sticky=tk.W, padx=12, pady=(0, 6))
-        # self.num_of_conditions = tk.IntVar()
-        # self.num_of_conditions.set(self.settings_dict['num_of_conditions'])
-        # self.num_of_conditions_entry = tk.Spinbox(self.top_frame, from_=0, to=20, font=("Arial", 18), width=5,
-        #                                           textvariable=self.num_of_conditions)
-        # self.num_of_conditions_entry.grid(row=0, rowspan=2, column=1, padx=5)
 
         # Length of trial
         tk.Label(self.top_frame, text="Length of Trial", font=('Arial', 11)) \
@@ -63,23 +51,19 @@ class SettingsFrame(tk.Toplevel):
                                               textvariable=self.num_of_trials)
         self.num_of_trials_entry.grid(row=6, rowspan=2, column=1, padx=5)
 
-        # save and set button
+        # Buttons
         self.button_frame = tk.Frame(self.root)
         self.button_frame.grid(row=3, column=0, padx=5, pady=12)
-        self.set_button = tk.Button(self.button_frame, text="Set Conditions",
-                                    command=self.setting_conditions)
-        self.save_button = tk.Button(self.button_frame, text="Save Changes",
+
+        self.save_button = tk.Button(self.button_frame, width=13, text="Save Changes",
                                      command=self.save_settings)
-        self.set_button.grid(row=0, column=0, padx=5)
+        self.save_button.grid(row=0, column=0, padx=5)
+
+        self.save_button = tk.Button(self.button_frame, width=13, text="Close",
+                                     command=self.close)
         self.save_button.grid(row=0, column=1, padx=5)
 
         self.configure_condition_table()
-
-    def setting_conditions(self):
-        self.top_level = tk.Toplevel(self.root)
-        self.conditions = ConditionsFrame(self.top_level,
-                                          self.num_of_conditions,
-                                          self.settings_dict['conditions']).waiting()
 
     def configure_condition_table(self):
         self.fields = ['Condition', 'Delay',
@@ -166,3 +150,6 @@ class SettingsFrame(tk.Toplevel):
         del self.vals[-1]
         for w in l:
             w.destroy()
+
+    def close(self):
+        self.root.destroy()
