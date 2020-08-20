@@ -34,7 +34,7 @@ class MainFrame(tk.Frame):
             'conditions': [
                 {
                     'condition': 1,
-                    'delay': 0.8,
+                    'delay': 0,
                     'perturbation': 5,
                     'cursor_pert_size': 5,
                     'target_pert_size': 5,
@@ -236,11 +236,10 @@ class MainFrame(tk.Frame):
             self.stop()
             return
 
-        self.canvas_text['text'] = 'phase time: %.1d\nconditions: %.1d\nphase: %.1d\nscore: %.1d' % (self.phase_time, self.list_counter, self.current_phase, self.norm_score)
+        if self.current_phase == constants.START_PHASE or self.current_phase == constants.TRACK_PHASE:
+            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
         if self.is_target_moved:
             self.target_position_data = self.playground.move_target(1, 0.1, self.phase_time) #
-            
-            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data, 1, 0.1, self.phase_time)
 
             self.current_score = exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
@@ -256,7 +255,7 @@ class MainFrame(tk.Frame):
 
     def start(self):
         self.playground.move_target(0, 0, self.phase_time)
-        self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
+        self.playground.move_cursor(0, 0, 0, self.phase_time)
 
         waserror = False
         if self.record_on.get():
@@ -304,7 +303,6 @@ class MainFrame(tk.Frame):
             self.run()
 
     def stop(self):
-        print("a")
         self.start_stop_button['text'] = "Start"
         self.start_stop_button['command'] = self.start
         self.record_dir_entry['state'] = 'normal'
