@@ -86,14 +86,18 @@ class MainFrame(tk.Frame):
     def init_new_phase(self):
         self.current_phase += 1
         if self.current_phase == constants.END_PHASE:
-            self.trial_number += 1
-            if self.trial_number > self.settings['num_of_trials']:
-                self.stop()
-                return
             self.current_phase = constants.START_PHASE
         self.phase_time = 0
 
         if self.current_phase == constants.START_PHASE:
+            self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
+            self.cursor_position_data = 0
+            self.target_position_data = 0
+            self.channel_zero_button_value[0] = 0
+            self.is_zeroed = False
+            self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
+            self.playground.move_target(0, 0, self.phase_time)
+            self.delay_pointer = 0
             self.set_visibility(True, True)
             self.playground.hide_score()
             self.list_counter += 1
@@ -242,17 +246,18 @@ class MainFrame(tk.Frame):
 
         if self.phase_time == self.next_phase_time:
             self.init_new_phase()
+        
+        if self.trial_counter.get() > self.settings['num_of_trials']:
+            self.stop()
+            return
 
-        self.canvas_text['text'] = 'phase time: %.1d\nconditions: %.1d\nphase: %.1d\nscore: %.1d' % (self.phase_time,
-                                                                                                     self.list_counter,
-                                                                                                     self.current_phase,
-                                                                                                     self.norm_score)
-        if self.is_target_moved:
-            self.target_position_data = self.playground.move_target(self.target_amp, self.target_freq, self.phase_time)
+        if self.current_phase == constants.START_PHASE or self.current_phase == constants.TRACK_PHASE:
             self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
                                                                                        self.cursor_amp,
                                                                                        self.cursor_freq,
                                                                                        self.phase_time)
+        if self.is_target_moved:
+            self.target_position_data = self.playground.move_target(self.target_amp, self.target_freq, self.phase_time)
 
             self.current_score = exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
@@ -268,7 +273,7 @@ class MainFrame(tk.Frame):
 
     def start(self):
         self.playground.move_target(0, 0, self.phase_time)
-        self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
+        self.playground.move_cursor(0, 0, 0, self.phase_time)
 
         waserror = False
         if self.record_on.get():
@@ -369,7 +374,6 @@ class MainFrame(tk.Frame):
 
         # Init trial variable
         self.list_counter = -1
-        self.trial_number = 0
         self.phase_time = 0
         self.current_phase = 0
         self.next_phase_time = 0

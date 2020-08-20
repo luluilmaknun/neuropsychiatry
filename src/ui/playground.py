@@ -22,8 +22,8 @@ class Playground(tk.Canvas):
 
     def create_boxes(self, size):
         self.size_cursor_target = size
-        self.cursor = Box(self, 'yellow', size)
         self.target = Box(self, 'red', size)
+        self.cursor = Box(self, 'yellow', size)
 
         self.cursor.move(self.center_x - (size/2), self.center_y - (size/2))
         self.target.move(self.center_x - (size/2), self.center_y - (size/2))
