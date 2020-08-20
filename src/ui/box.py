@@ -31,3 +31,6 @@ class Box():
 
     def show(self):
         self.canvas.itemconfig(self.rectangle, state=tk.NORMAL)
+
+    def delete(self):
+        self.canvas.delete(self.rectangle)

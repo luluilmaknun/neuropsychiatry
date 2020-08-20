@@ -8,7 +8,7 @@ import src.constants as constants
 class Playground(tk.Canvas):
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
-        self.pack(anchor=tk.CENTER)
+        self.pack(anchor=tk.CENTER, expand=True)
         self.height = kwargs['height']
         self.width = kwargs['width']
         self.center_y = self.height / 2
@@ -64,3 +64,9 @@ class Playground(tk.Canvas):
 
     def hide_target(self):
         self.target.hide()
+
+    def set_cursor_target_size(self, size):
+        self.target.delete()
+        self.cursor.delete()
+
+        self.create_boxes(size)
