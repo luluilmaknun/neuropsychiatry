@@ -35,12 +35,12 @@ class MainFrame(tk.Frame):
                 {
                     'condition': 1,
                     'delay': 0,
-                    'cursor_freq': 0.2,
-                    'target_freq': 0.5,
-                    'cursor_amp': 1,
+                    'cursor_freq': 0.1,
+                    'target_freq': 0.2,
+                    'cursor_amp': 0.3,
                     'target_amp': 1,
-                    'visibility_cursor': 1,
-                    'visibility_target': 1,
+                    'visibility_cursor': 0.2,
+                    'visibility_target': 0.2,
                 },
             ],
         }
@@ -70,15 +70,12 @@ class MainFrame(tk.Frame):
         self.nidaq_task.in_stream.over_write = ConstantOverwrite.OVERWRITE_UNREAD_SAMPLES
 
     def set_visibility(self, cursor_vb, target_vb):
-        cursor_vb_settings = self.settings['conditions'][self.list_counter]['visibility_cursor']
-        target_vb_settings = self.settings['conditions'][self.list_counter]['visibility_target']
-
-        if cursor_vb and cursor_vb_settings:
+        if cursor_vb:
             self.playground.show_cursor()
         else:
             self.playground.hide_cursor()
 
-        if target_vb and target_vb_settings:
+        if target_vb:
             self.playground.show_target()
         else:
             self.playground.hide_target()
@@ -95,11 +92,7 @@ class MainFrame(tk.Frame):
             self.target_position_data = 0
             self.channel_zero_button_value[0] = 0
             self.is_zeroed = False
-            self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
-            self.playground.move_target(0, 0, self.phase_time)
             self.delay_pointer = 0
-            self.set_visibility(True, True)
-            self.playground.hide_score()
             self.list_counter += 1
             if self.list_counter >= self.settings['num_of_conditions']:
                 self.list_counter = 0
@@ -117,6 +110,14 @@ class MainFrame(tk.Frame):
             self.target_amp = self.settings['conditions'][self.list_counter]['target_amp']
             self.cursor_freq = self.settings['conditions'][self.list_counter]['cursor_freq']
             self.target_freq = self.settings['conditions'][self.list_counter]['target_freq']
+            self.cursor_vb_settings = self.settings['conditions'][self.list_counter]['visibility_cursor']
+            self.target_vb_settings = self.settings['conditions'][self.list_counter]['visibility_target']
+            self.playground.create_boxes(constants.CURSOR_SCALE, self.target_vb_settings, self.cursor_vb_settings)
+            self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
+            self.playground.move_target(0, 0, self.phase_time)
+
+            self.set_visibility(True, True)
+            self.playground.hide_score()
         elif self.current_phase == constants.TRACK_PHASE:
             self.is_target_moved = True
             self.set_visibility(True, True)
@@ -131,6 +132,7 @@ class MainFrame(tk.Frame):
         elif self.current_phase == constants.REST_PHASE:
             self.playground.show_score('+')
             self.next_phase_time = 100
+            self.playground.destroy_boxes()
 
     def init_elements(self):
         # FRAMING
@@ -209,7 +211,6 @@ class MainFrame(tk.Frame):
 
     def init_playground(self):
         self.playground = Playground(self.root, height=constants.WINDOW_HEIGHT, width=constants.WINDOW_WIDTH, bg='black')
-        self.playground.create_boxes(constants.CURSOR_SCALE)
 
     def increase_counter(self, counter='trial'):
         if counter == 'trial':
@@ -223,7 +224,6 @@ class MainFrame(tk.Frame):
     def open_settings(self):
         self.top_level = tk.Toplevel(self.root)
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
-        self.playground.set_cursor_target_size(self.settings['size_cursor_target'])
 
     def run(self):
         self.data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
@@ -251,13 +251,17 @@ class MainFrame(tk.Frame):
             self.stop()
             return
 
-        if self.current_phase == constants.START_PHASE or self.current_phase == constants.TRACK_PHASE:
+        if self.current_phase == constants.START_PHASE:
+            self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
+                                                                                       self.cursor_amp,
+                                                                                       self.cursor_freq,
+                                                                                       0)
+        if self.is_target_moved:
+            self.target_position_data = self.playground.move_target(self.target_amp, self.target_freq, self.phase_time)
             self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
                                                                                        self.cursor_amp,
                                                                                        self.cursor_freq,
                                                                                        self.phase_time)
-        if self.is_target_moved:
-            self.target_position_data = self.playground.move_target(self.target_amp, self.target_freq, self.phase_time)
 
             self.current_score = exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
             self.score_count += 1
@@ -272,9 +276,6 @@ class MainFrame(tk.Frame):
         self._job = self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
 
     def start(self):
-        self.playground.move_target(0, 0, self.phase_time)
-        self.playground.move_cursor(0, 0, 0, self.phase_time)
-
         waserror = False
         if self.record_on.get():
             record_dir = self.record_dir.get()
@@ -344,6 +345,7 @@ class MainFrame(tk.Frame):
                 self.record_number.set(current_id + 1)
                 self.record_canvas.itemconfig(self.record_icon, fill='red3')
 
+        self.playground.destroy_boxes()
         self.init_running_variable()
     
     def zero_pressed(self):

@@ -20,13 +20,17 @@ class Playground(tk.Canvas):
 
         self.clock_freq = 50
 
-    def create_boxes(self, size):
+    def create_boxes(self, size, target_opacity, cursor_opacity):
         self.size_cursor_target = size
-        self.target = Box(self, 'red', size)
-        self.cursor = Box(self, 'yellow', size)
+        self.target = Box(self, 'red', size, target_opacity)
+        self.cursor = Box(self, 'yellow', size, cursor_opacity)
 
         self.cursor.move(self.center_x - (size/2), self.center_y - (size/2))
         self.target.move(self.center_x - (size/2), self.center_y - (size/2))
+
+    def destroy_boxes(self):
+        self.target.delete()
+        self.cursor.delete()
 
     def move_target(self, amp, freq, phase_time):
         pos_y = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
@@ -64,9 +68,3 @@ class Playground(tk.Canvas):
 
     def hide_target(self):
         self.target.hide()
-
-    def set_cursor_target_size(self, size):
-        self.target.delete()
-        self.cursor.delete()
-
-        self.create_boxes(size)

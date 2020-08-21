@@ -1,11 +1,15 @@
 import tkinter as tk
+from PIL import Image, ImageTk
 
 
 class Box():
-    def __init__(self, canvas, color, size):
+    def __init__(self, canvas, color, size, opacity):
         self.canvas = canvas
         self.size = size
-        self.rectangle = self.canvas.create_rectangle(0, 0, 0+size, 0+size, fill=color)
+        self.alpha = int(opacity * 255)
+        fill = self.canvas.winfo_rgb(color) + (self.alpha,)
+        self.image = ImageTk.PhotoImage(Image.new('RGBA', (size, size), fill))
+        self.rectangle = self.canvas.create_image(0, 0, image=self.image, anchor='nw')
         self.x = 0
         self.y = 0
 
