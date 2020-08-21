@@ -87,22 +87,28 @@ class MainFrame(tk.Frame):
         self.phase_time = 0
 
         if self.current_phase == constants.START_PHASE:
+            self.trial_counter.set(self.trial_counter.get() + 1)
             self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
             self.cursor_position_data = 0
             self.target_position_data = 0
             self.channel_zero_button_value[0] = 0
             self.is_zeroed = False
             self.delay_pointer = 0
-            self.list_counter += 1
-            if self.list_counter >= self.settings['num_of_conditions']:
-                self.list_counter = 0
             self.next_phase_time = 100
             self.score_count = 0
             self.current_score = 0
             self.norm_score = 0
             self.total_score = 0
             self.is_target_moved = False
-            self.trial_counter.set(self.trial_counter.get() + 1)
+
+            #set condition
+            if self.settings['num_of_trials'] == 1:
+                self.list_counter += 1
+            elif (self.trial_counter.get() % self.settings['num_of_trials']) == 1:
+                self.list_counter += 1
+
+            if self.list_counter >= self.settings['num_of_conditions']:
+                self.list_counter = 0
 
             # Set Current Conditions
             self.delay = self.settings['conditions'][self.list_counter]['delay']
@@ -112,7 +118,10 @@ class MainFrame(tk.Frame):
             self.target_freq = self.settings['conditions'][self.list_counter]['target_freq']
             self.cursor_vb_settings = self.settings['conditions'][self.list_counter]['visibility_cursor']
             self.target_vb_settings = self.settings['conditions'][self.list_counter]['visibility_target']
-            self.playground.create_boxes(constants.CURSOR_SCALE, self.target_vb_settings, self.cursor_vb_settings)
+            self.playground.create_boxes(
+                constants.CURSOR_SCALE,
+                self.target_vb_settings,
+                self.cursor_vb_settings)
             self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
             self.playground.move_target(0, 0, self.phase_time)
 
@@ -171,7 +180,7 @@ class MainFrame(tk.Frame):
         tk.Label(self.right_frame, text="Sample counter", font=("Arial", 12)) \
             .grid(row=2, column=0, sticky=tk.NW, pady=15, padx=15)
         self.sample_counter = tk.IntVar()
-        self.sample_counter.set(0)
+        self.sample_counter.set(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
         self.sample_counter_label = tk.Label(self.right_frame, textvariable=self.sample_counter,
                                              font=("Arial", 15))
         self.sample_counter_label.grid(row=2, column=1, sticky=tk.W)
@@ -210,7 +219,11 @@ class MainFrame(tk.Frame):
         self.record_number_entry.pack(side='left', padx=2, ipadx=2, ipady=2, anchor=tk.CENTER)
 
     def init_playground(self):
-        self.playground = Playground(self.root, height=constants.WINDOW_HEIGHT, width=constants.WINDOW_WIDTH, bg='black')
+        self.playground = Playground(
+            self.root,
+            height=constants.WINDOW_HEIGHT,
+            width=constants.WINDOW_WIDTH,
+            bg='black')
 
     def increase_counter(self, counter='trial'):
         if counter == 'trial':
@@ -227,8 +240,8 @@ class MainFrame(tk.Frame):
 
     def run(self):
         self.data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
-        self.channel_read_value[0] = sum(self.data[0])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
-        self.channel_read_value[1] = sum(self.data[1])/constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+        self.channel_read_value[0] = sum(self.data[0]) / constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
+        self.channel_read_value[1] = sum(self.data[1]) / constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
         # One channel data processing
         cur_data = (self.channel_read_value[0] - self.channel_zero_button_value[0]) * constants.CURSOR_SCALE - 1
@@ -246,8 +259,8 @@ class MainFrame(tk.Frame):
 
         if self.phase_time == self.next_phase_time:
             self.init_new_phase()
-        
-        if self.trial_counter.get() > self.settings['num_of_trials']:
+
+        if self.trial_counter.get() > (self.settings['num_of_trials'] * self.settings['num_of_conditions']):
             self.stop()
             return
 

@@ -24,7 +24,7 @@ pytest:
 build:
   stage: Build
   script:
-    - pyinstaller --onedir --windowed src/main.py
+    - pyinstaller --onedir --windowed src/ui/main.py
   artifacts:
     paths:
       - dist

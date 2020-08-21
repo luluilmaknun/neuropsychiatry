@@ -15,7 +15,11 @@ class Playground(tk.Canvas):
         self.center_x = self.width / 2
         self.STATIC_SIZE_H = 360
 
-        self.score_label = self.create_text([self.center_x, self.center_y], font=('Arial', 100, 'bold'), fill='lime green', text='0')
+        self.score_label = self.create_text(
+            [self.center_x, self.center_y],
+            font=('Arial', 100, 'bold'),
+            fill='lime green',
+            text='0')
         self.hide_score()
 
         self.clock_freq = 50
