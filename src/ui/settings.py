@@ -67,8 +67,10 @@ class SettingsFrame(tk.Toplevel):
 
     def configure_condition_table(self):
         self.fields = ['Condition', 'Delay',
-                       'Cursor Frequency',
                        'Target Frequency',
+                       'Cursor Pertubation Frequency',
+                       'Target Pertubation Frequency',
+                       'Target Amplitude',
                        'Cursor Perturbation Amplitude',
                        'Target Perturbation Amplitude',
                        'Visibility of Cursor',

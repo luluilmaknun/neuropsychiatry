@@ -36,8 +36,10 @@ class Playground(tk.Canvas):
         self.target.delete()
         self.cursor.delete()
 
-    def move_target(self, amp, freq, phase_time):
-        pos_y = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
+    def move_target(self, amp, freq, pert_amp, pert_freq, phase_time):
+        position = amp * sin(2 * pi * freq * phase_time / self.clock_freq)
+        pertubation = pert_amp * sin(2 * pi * pert_freq * phase_time / self.clock_freq)
+        pos_y = position + pertubation
         position_data = pos_y
 
         pos_y = self.center_y - pos_y * constants.RADIUS - self.size_cursor_target/2

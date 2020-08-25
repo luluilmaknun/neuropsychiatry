@@ -36,10 +36,12 @@ class MainFrame(tk.Frame):
                 {
                     'condition': 1,
                     'delay': 0,
-                    'cursor_freq': 0.1,
-                    'target_freq': 0.2,
-                    'cursor_amp': 0.3,
+                    'target_freq': 0.1,
+                    'cursor_pert_freq': 0.1,
+                    'target_pert_freq': 0.2,
                     'target_amp': 1,
+                    'cursor_pert_amp': 0.3,
+                    'target_pert_amp': 1,
                     'visibility_cursor': 0.2,
                     'visibility_target': 0.2,
                 },
@@ -113,10 +115,12 @@ class MainFrame(tk.Frame):
 
             # Set Current Conditions
             self.delay = self.settings['conditions'][self.list_counter]['delay']
-            self.cursor_amp = self.settings['conditions'][self.list_counter]['cursor_amp']
             self.target_amp = self.settings['conditions'][self.list_counter]['target_amp']
-            self.cursor_freq = self.settings['conditions'][self.list_counter]['cursor_freq']
+            self.cursor_pert_amp = self.settings['conditions'][self.list_counter]['cursor_pert_amp']
+            self.target_pert_amp = self.settings['conditions'][self.list_counter]['target_pert_amp']
             self.target_freq = self.settings['conditions'][self.list_counter]['target_freq']
+            self.cursor_pert_freq = self.settings['conditions'][self.list_counter]['cursor_pert_freq']
+            self.target_pert_freq = self.settings['conditions'][self.list_counter]['target_pert_freq']
             self.cursor_vb_settings = self.settings['conditions'][self.list_counter]['visibility_cursor']
             self.target_vb_settings = self.settings['conditions'][self.list_counter]['visibility_target']
             self.playground.create_boxes(
@@ -124,7 +128,7 @@ class MainFrame(tk.Frame):
                 self.target_vb_settings,
                 self.cursor_vb_settings)
             self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
-            self.playground.move_target(0, 0, self.phase_time)
+            self.playground.move_target(0, 0, 0, 0, self.phase_time)
 
             self.set_visibility(True, True)
             self.playground.hide_score()
@@ -268,14 +272,18 @@ class MainFrame(tk.Frame):
 
         if self.current_phase == constants.START_PHASE:
             self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
-                                                                                       self.cursor_amp,
-                                                                                       self.cursor_freq,
+                                                                                       self.cursor_pert_amp,
+                                                                                       self.cursor_pert_freq,
                                                                                        0)
         if self.is_target_moved:
-            self.target_position_data = self.playground.move_target(self.target_amp, self.target_freq, self.phase_time)
+            self.target_position_data = self.playground.move_target(self.target_amp,
+                                                                    self.target_freq,
+                                                                    self.target_pert_amp,
+                                                                    self.target_pert_freq,
+                                                                    self.phase_time)
             self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
-                                                                                       self.cursor_amp,
-                                                                                       self.cursor_freq,
+                                                                                       self.cursor_pert_amp,
+                                                                                       self.cursor_pert_freq,
                                                                                        self.phase_time)
 
             self.current_score = exp(-abs(self.cursor_position_data - self.target_position_data) / constants.SCORE_CONST)
