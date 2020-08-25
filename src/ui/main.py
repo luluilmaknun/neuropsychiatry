@@ -303,11 +303,11 @@ class MainFrame(tk.Frame):
             try:
                 # Create files
                 fn_hi = root + "hi-" + str(record_number) + '.csv'
-                self.fid_hi = open(fn_hi, 'w')
+                self.fid_hi = open(fn_hi, 'w', newline='')
                 self.fwriter_hi = writer(self.fid_hi)
 
                 fn_lo = root + "lo-" + str(record_number) + '.csv'
-                self.fid_lo = open(fn_lo, 'w')
+                self.fid_lo = open(fn_lo, 'w', newline='')
                 self.fwriter_lo = writer(self.fid_lo)
 
                 header = ['cursor position', 'target position', 'perturbation', 'current phase', 'condition',
