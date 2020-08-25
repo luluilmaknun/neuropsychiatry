@@ -6,6 +6,7 @@ import src.constants as constants
 from math import exp
 from numpy import sign
 from csv import writer
+from playsound import playsound
 
 from src.ui.settings import SettingsFrame
 from src.ui.playground import Playground
@@ -132,6 +133,7 @@ class MainFrame(tk.Frame):
             self.set_visibility(True, True)
             self.playground.hide_score()
             self.next_phase_time = self.settings['length_of_trial'] * constants.CLOCK_FREQUENCY
+            playsound("..\media\\bleep.mp3")
         elif self.current_phase == constants.SCORE_PHASE:
             self.set_visibility(False, False)
             self.is_target_moved = False
