@@ -103,7 +103,7 @@ class MainFrame(tk.Frame):
             self.total_score = 0
             self.is_target_moved = False
 
-            #set condition
+            # Set counter for current condition
             if self.settings['num_of_trials'] == 1:
                 self.list_counter += 1
             elif (self.trial_counter.get() % self.settings['num_of_trials']) == 1:
@@ -123,7 +123,7 @@ class MainFrame(tk.Frame):
             self.cursor_vb_settings = self.settings['conditions'][self.list_counter]['visibility_cursor']
             self.target_vb_settings = self.settings['conditions'][self.list_counter]['visibility_target']
             self.playground.create_boxes(
-                constants.CURSOR_SCALE,
+                self.settings['size_cursor_target'],
                 self.target_vb_settings,
                 self.cursor_vb_settings)
             self.playground.move_cursor(self.cursor_position_data, 0, 0, self.phase_time)
@@ -264,10 +264,12 @@ class MainFrame(tk.Frame):
         if self.phase_time == self.next_phase_time:
             self.init_new_phase()
 
+        # trial end condition
         if self.trial_counter.get() > (self.settings['num_of_trials'] * self.settings['num_of_conditions']):
             self.stop()
             return
 
+        # allow cursor to move when in start phase
         if self.current_phase == constants.START_PHASE:
             self.cursor_position_data, self.perturbation = self.playground.move_cursor(self.cursor_position_data,
                                                                                        self.cursor_pert_amp,
