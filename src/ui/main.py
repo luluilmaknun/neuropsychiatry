@@ -2,6 +2,7 @@ import tkinter as tk
 import tkinter.filedialog as tk_fd
 import os
 import nidaqmx
+import random
 import src.constants as constants
 from math import exp
 from numpy import sign
@@ -19,7 +20,6 @@ class MainFrame(tk.Frame):
         self.root = root
         self.root.title("Neuropsikiatri")
         self._job = None
-        self.init_running_variable()
 
         # Set MainFrame width and height based on screen size
         self.w = self.root.winfo_screenwidth()
@@ -47,6 +47,8 @@ class MainFrame(tk.Frame):
                 },
             ],
         }
+
+        self.init_running_variable()
 
         # Init elements frame
         self.init_elements()
@@ -105,13 +107,14 @@ class MainFrame(tk.Frame):
             self.is_target_moved = False
 
             # Set counter for current condition
-            if self.settings['num_of_trials'] == 1:
-                self.list_counter += 1
-            elif (self.trial_counter.get() % self.settings['num_of_trials']) == 1:
-                self.list_counter += 1
-
-            if self.list_counter >= self.settings['num_of_conditions']:
-                self.list_counter = 0
+            selected_condition = random.choice(self.settings_randomizer_list)
+            selected_condition_index = self.settings_randomizer_list.index(selected_condition)
+            self.list_counter = selected_condition[0]
+            selected_condition[1] = (selected_condition[1] - 1)
+            if (selected_condition[1] <= 0):
+                del self.settings_randomizer_list[selected_condition_index]
+            else:
+                self.settings_randomizer_list[selected_condition_index] = selected_condition
 
             # Set Current Conditions
             self.delay = self.settings['conditions'][self.list_counter]['delay']
@@ -243,6 +246,9 @@ class MainFrame(tk.Frame):
     def open_settings(self):
         self.top_level = tk.Toplevel(self.root)
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
+        self.settings_randomizer_list = []
+        for i in range(self.settings['num_of_conditions']):
+            self.settings_randomizer_list.append([i, self.settings['num_of_trials']])
 
     def run(self):
         self.data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
@@ -404,6 +410,9 @@ class MainFrame(tk.Frame):
         self.phase_time = 0
         self.current_phase = 0
         self.next_phase_time = 0
+        self.settings_randomizer_list = []
+        for i in range(self.settings['num_of_conditions']):
+            self.settings_randomizer_list.append([i, self.settings['num_of_trials']])
 
         # Init record data variable
         self.data = [[]] * constants.CHANNEL_COUNT
