@@ -1,4 +1,6 @@
+import json
 import tkinter as tk
+import tkinter.filedialog as tk_fd
 
 
 class SettingsFrame(tk.Toplevel):
@@ -36,7 +38,7 @@ class SettingsFrame(tk.Toplevel):
             .grid(row=5, column=0, sticky=tk.W, padx=12, pady=(0, 6))
         self.size_cursor_target = tk.IntVar()
         self.size_cursor_target.set(self.settings_dict['size_cursor_target'])
-        self.size_cursor_target_entry = tk.Spinbox(self.top_frame, from_=0, to=100, font=("Arial", 18), width=5,
+        self.size_cursor_target_entry = tk.Spinbox(self.top_frame, from_=0, to=1000, font=("Arial", 18), width=5,
                                                    textvariable=self.size_cursor_target)
         self.size_cursor_target_entry.grid(row=4, rowspan=2, column=1, padx=5)
 
@@ -55,21 +57,29 @@ class SettingsFrame(tk.Toplevel):
         self.button_frame = tk.Frame(self.root)
         self.button_frame.grid(row=3, column=0, padx=5, pady=12)
 
+        self.save_button = tk.Button(self.button_frame, width=13, text="Export Settings",
+                                     command=self.export_settings)
+        self.save_button.grid(row=0, column=0, padx=5)
+
+        self.save_button = tk.Button(self.button_frame, width=13, text="Import Settings",
+                                     command=self.import_settings)
+        self.save_button.grid(row=0, column=1, padx=5)
+
         self.save_button = tk.Button(self.button_frame, width=13, text="Save Changes",
                                      command=self.save_settings)
-        self.save_button.grid(row=0, column=0, padx=5)
+        self.save_button.grid(row=0, column=2, padx=5)
 
         self.save_button = tk.Button(self.button_frame, width=13, text="Close",
                                      command=self.close)
-        self.save_button.grid(row=0, column=1, padx=5)
+        self.save_button.grid(row=0, column=3, padx=5)
 
         self.configure_condition_table()
 
     def configure_condition_table(self):
-        self.fields = ['Condition', 'Delay',
-                       'Target Frequency',
-                       'Cursor Pertubation Frequency',
-                       'Target Pertubation Frequency',
+        self.fields = ['Condition', 'Delay (s)',
+                       'Target Frequency (Hz)',
+                       'Cursor Pertubation Frequency (Hz)',
+                       'Target Pertubation Frequency (Hz)',
                        'Target Amplitude',
                        'Cursor Perturbation Amplitude',
                        'Target Perturbation Amplitude',
@@ -152,6 +162,27 @@ class SettingsFrame(tk.Toplevel):
         del self.vals[-1]
         for w in l:
             w.destroy()
+
+    def import_settings(self):
+        filename = tk_fd.askopenfilename()
+        with open(filename, 'r') as f_im:
+            settings_dict = json.load(f_im)
+
+            self.num_of_conditions = settings_dict['num_of_conditions']
+            self.length_of_trial.set(settings_dict['length_of_trial'])
+            self.size_cursor_target.set(settings_dict['size_cursor_target'])
+            self.num_of_trials.set(settings_dict['num_of_trials'])
+            self.conditions = settings_dict['conditions']
+
+            self.configure_condition_table()
+            self.root.lift()
+
+    def export_settings(self):
+        filename = tk_fd.asksaveasfilename(defaultextension='.json', filetypes=[("json files", '*.json')],
+                                           title="Choose filename")
+        with open(filename, 'w') as f_ex:
+            self.save_settings()
+            f_ex.write(json.dumps(self.settings_dict, indent=4))
 
     def close(self):
         self.root.destroy()
