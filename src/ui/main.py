@@ -202,10 +202,13 @@ class MainFrame(tk.Frame):
         self.zero_button = tk.Button(self.button_frame, text="Zero", width=10, font=("Arial", 16), command=self.zero_pressed)
         self.zero_button.pack(fill=tk.BOTH, expand=True, pady=8)
 
-        # RADIOBUTTON RECORD
+        # RADIOBUTTONS
         self.record_on = tk.BooleanVar()
         tk.Checkbutton(self.button_frame, text="Record", var=self.record_on, font=("Arial", 16),
-                       onvalue=True, offvalue=False).pack()
+                       onvalue=True, offvalue=False).pack(anchor=tk.W)
+        self.send_ttl = tk.BooleanVar()
+        tk.Checkbutton(self.button_frame, text="Send TTL", var=self.send_ttl, font=("Arial", 16),
+                       onvalue=True, offvalue=False).pack(anchor=tk.W)
 
         # FILE MANAGER
         self.file_frame = tk.Frame(self.right_frame)
