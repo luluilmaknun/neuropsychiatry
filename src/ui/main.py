@@ -1,3 +1,4 @@
+# Import modules
 import tkinter as tk
 import tkinter.filedialog as tk_fd
 import os
@@ -14,7 +15,11 @@ from src.ui.playground import Playground
 
 
 class MainFrame(tk.Frame):
+    """
+        MainFrame contains all variables and functionalities in the main windows
+    """
     def __init__(self, root, *args, **kwargs):
+        # Init main frame
         super().__init__(root, *args, *kwargs)
         self.pack(anchor=tk.CENTER, fill=tk.Y)
         self.root = root
@@ -31,7 +36,7 @@ class MainFrame(tk.Frame):
             'num_of_conditions': 1,
             'num_of_trials': 10,
             'length_of_trial': 10,
-            'size_cursor_target': 100,
+            'size_cursor_target': 150,
             'conditions': [
                 {
                     'condition': 1,
@@ -42,15 +47,14 @@ class MainFrame(tk.Frame):
                     'target_amp': 1,
                     'cursor_pert_amp': 0.3,
                     'target_pert_amp': 1,
-                    'visibility_cursor': 0.2,
-                    'visibility_target': 0.2,
+                    'visibility_cursor': 1,
+                    'visibility_target': 1,
                 },
             ],
         }
 
-        self.init_running_variable()
-
         # Init elements frame
+        self.init_running_variable()
         self.init_elements()
         self.init_playground()
         self.update()
@@ -75,6 +79,12 @@ class MainFrame(tk.Frame):
         self.nidaq_task.in_stream.over_write = ConstantOverwrite.OVERWRITE_UNREAD_SAMPLES
 
     def set_visibility(self, cursor_vb, target_vb):
+        """
+            Will set visibility of cursor and target
+
+            :param cursor_vb: visibility of cursor in boolean
+            :param target_vb: visibility of target in boolean
+        """
         if cursor_vb:
             self.playground.show_cursor()
         else:
@@ -91,6 +101,7 @@ class MainFrame(tk.Frame):
             self.current_phase = constants.START_PHASE
         self.phase_time = 0
 
+        # Case current phase handling
         if self.current_phase == constants.START_PHASE:
             self.trial_counter.set(self.trial_counter.get() + 1)
             self.cursor_position_data_buffer = [0] * constants.DELAY_BUFFER_LEN
@@ -140,7 +151,7 @@ class MainFrame(tk.Frame):
             self.set_visibility(True, True)
             self.playground.hide_score()
             self.next_phase_time = self.settings['length_of_trial'] * constants.CLOCK_FREQUENCY
-            playsound("..\\media\\bleep.mp3")
+            playsound("..\\media\\bleep.mp3", False)
         elif self.current_phase == constants.SCORE_PHASE:
             self.set_visibility(False, False)
             self.is_target_moved = False
@@ -197,9 +208,11 @@ class MainFrame(tk.Frame):
         # BUTTON STOP & ZERO
         self.button_frame = tk.Frame(self.right_frame)
         self.button_frame.grid(columnspan=2, sticky=tk.NSEW, pady=65)
-        self.start_stop_button = tk.Button(self.button_frame, text="Start", width=10, font=("Arial", 16), command=self.start)
+        self.start_stop_button = tk.Button(self.button_frame, text="Start", width=10, font=("Arial", 16),
+                                           command=self.start)
         self.start_stop_button.pack(fill=tk.BOTH, expand=True, pady=8)
-        self.zero_button = tk.Button(self.button_frame, text="Zero", width=10, font=("Arial", 16), command=self.zero_pressed)
+        self.zero_button = tk.Button(self.button_frame, text="Zero", width=10, font=("Arial", 16),
+                                     command=self.zero_pressed)
         self.zero_button.pack(fill=tk.BOTH, expand=True, pady=8)
 
         # RADIOBUTTONS
@@ -231,22 +244,25 @@ class MainFrame(tk.Frame):
         self.record_number_entry.pack(side='left', padx=2, ipadx=2, ipady=2, anchor=tk.CENTER)
 
     def init_playground(self):
+        """
+            Init black canvas in the middle called 'Playground'
+        """
         self.playground = Playground(
             self.root,
             height=constants.WINDOW_HEIGHT,
             width=constants.WINDOW_WIDTH,
             bg='black')
 
-    def increase_counter(self, counter='trial'):
-        if counter == 'trial':
-            self.trial_counter.set(self.trial_counter.get() + 1)
-        elif counter == 'sample':
-            self.sample_counter.set(self.sample_counter.get() + 1)
-
     def change_dir(self, event):
+        """
+            Event handling when record_dir_entry clicked. Will popup directory window
+        """
         self.record_dir.set(tk_fd.askdirectory())
 
     def open_settings(self):
+        """
+            Event handling when change settings clicked. Will popup settings window
+        """
         self.top_level = tk.Toplevel(self.root)
         self.settings = SettingsFrame(self.top_level, self.settings).waiting()
         self.settings_randomizer_list = []
@@ -304,9 +320,11 @@ class MainFrame(tk.Frame):
             self.current_score = 0
             self.target_position_data = 0
 
+        # Write output data to output file
         self.create_output_data()
 
         self.delay_pointer = (self.delay_pointer + 1) % constants.DELAY_BUFFER_LEN
+        # Let the function run asynchronously in constant time of WINDOW_REFRESH_TIME
         self._job = self.root.after(constants.WINDOW_REFRESH_TIME, self.run)
 
     def start(self):
@@ -322,7 +340,7 @@ class MainFrame(tk.Frame):
             waserror = False
 
             try:
-                # Create files
+                # Create csv files
                 fn_hi = root + "hi-" + str(record_number) + '.csv'
                 self.fid_hi = open(fn_hi, 'w', newline='')
                 self.fwriter_hi = writer(self.fid_hi)
@@ -365,7 +383,7 @@ class MainFrame(tk.Frame):
 
         if self.record_on.get():
             try:
-                # Write data on files
+                # Write output data to output files
                 data = [[int(x * 100) for x in single_ch] for single_ch in self.data]
 
                 self.fwriter_lo.writerow(self.output_data)
@@ -442,12 +460,13 @@ class MainFrame(tk.Frame):
         self.output_data[8] = constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
         if self.record_on.get():
-            # Write data on files
+            # Write output data to output file
             data = [[int(x * 100) for x in single_ch] for single_ch in self.data]
             self.fwriter_lo.writerow(self.output_data)
             self.fwriter_hi.writerow(data)
 
 
+# THIS SECTION LET THE PROGRAM RUN WHEN THE FILE IS BEING CALLED
 def main():
     root = tk.Tk()
     MainFrame(root)

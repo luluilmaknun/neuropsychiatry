@@ -1,15 +1,14 @@
-"""
-    Box module
-"""
+# Import modules
 import tkinter as tk
 from PIL import Image, ImageTk
 
 
 class Box():
     """
-        Box class
+        Box class placed in playground
     """
     def __init__(self, canvas, color, size, opacity):
+        # Init box in playground
         self.canvas = canvas
         self.size = size
         self.alpha = int(opacity * 255)

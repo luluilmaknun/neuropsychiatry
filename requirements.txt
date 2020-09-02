@@ -6,4 +6,3 @@ six==1.15.0
 nidaqmx==0.5.7
 pyinstaller==3.6
 pillow==7.2.0
-playsound
