@@ -56,8 +56,8 @@ class MainFrame(tk.Frame):
         self.update()
 
         # Init nidaqmx task
-        self.nidaq_task = nidaqmx.task.Task("ReadVoltageTwoChannel")
-        self.nidaq_task.ai_channels.add_ai_voltage_chan(
+        self.nidaq_task_ai = nidaqmx.task.Task("ReadVoltageTwoChannel")
+        self.nidaq_task_ai.ai_channels.add_ai_voltage_chan(
             "Dev1/ai0, Dev1/ai4",
             0,
             nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
@@ -65,14 +65,21 @@ class MainFrame(tk.Frame):
             constants.READ_DATA_MAX_VALUE,
             nidaqmx.constants.VoltageUnits.VOLTS,
             0)
-        self.nidaq_task.timing.cfg_samp_clk_timing(
+        self.nidaq_task_ai.timing.cfg_samp_clk_timing(
             constants.READ_DATA_SAMPLE_RATE,
             0,
             nidaqmx.constants.Edge.RISING,
             nidaqmx.constants.AcquisitionType.CONTINUOUS,
             0)
         ConstantOverwrite = nidaqmx.constants.OverwriteMode
-        self.nidaq_task.in_stream.over_write = ConstantOverwrite.OVERWRITE_UNREAD_SAMPLES
+        self.nidaq_task_ai.in_stream.over_write = ConstantOverwrite.OVERWRITE_UNREAD_SAMPLES
+        LineGrouping = nidaqmx.constants.LineGrouping
+
+        self.nidaq_task_do = nidaqmx.task.Task("DigitalOutputTTL")
+        self.nidaq_task_do.do_channels.add_do_chan(
+            "Dev1/port0/line0:3",
+            line_grouping=LineGrouping.CHAN_FOR_ALL_LINES
+        )
 
     def set_visibility(self, cursor_vb, target_vb):
         if cursor_vb:
@@ -115,6 +122,18 @@ class MainFrame(tk.Frame):
                 del self.settings_randomizer_list[selected_condition_index]
             else:
                 self.settings_randomizer_list[selected_condition_index] = selected_condition
+            
+            # Output ttl value, 4 output line, max 15 condition
+            if (self.send_ttl.get()):
+                ttl_value_bin_string = '{0:04b}'.format(self.list_counter + 1)
+                self.nidaq_task_do.write(
+                    [
+                        ttl_value_bin_string[0],
+                        ttl_value_bin_string[1],
+                        ttl_value_bin_string[2],
+                        ttl_value_bin_string[3]
+                    ],
+                    auto_start=True)
 
             # Set Current Conditions
             self.delay = self.settings['conditions'][self.list_counter]['delay']
@@ -140,7 +159,7 @@ class MainFrame(tk.Frame):
             self.set_visibility(True, True)
             self.playground.hide_score()
             self.next_phase_time = self.settings['length_of_trial'] * constants.CLOCK_FREQUENCY
-            playsound("..\\media\\bleep.mp3")
+            playsound("bleep.mp3") # playsound("..\\media\\bleep.mp3"); if not building app
         elif self.current_phase == constants.SCORE_PHASE:
             self.set_visibility(False, False)
             self.is_target_moved = False
@@ -151,6 +170,8 @@ class MainFrame(tk.Frame):
             self.playground.show_score('+')
             self.next_phase_time = 100
             self.playground.destroy_boxes()
+            if (self.send_ttl.get()):
+                self.nidaq_task_do.write([0, 0, 0, 0], auto_start=True)
 
     def init_elements(self):
         # FRAMING
@@ -254,7 +275,7 @@ class MainFrame(tk.Frame):
             self.settings_randomizer_list.append([i, self.settings['num_of_trials']])
 
     def run(self):
-        self.data = self.nidaq_task.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
+        self.data = self.nidaq_task_ai.read(constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH)
         self.channel_read_value[0] = sum(self.data[0]) / constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
         self.channel_read_value[1] = sum(self.data[1]) / constants.READ_SAMPLE_PER_CHANNEL_PER_WINDOW_REFRESH
 
@@ -351,7 +372,7 @@ class MainFrame(tk.Frame):
             self.trial_counter.set(0)
             self.current_phase = 0
 
-            self.nidaq_task.start()
+            self.nidaq_task_ai.start()
             self.init_new_phase()
             self.run()
 
@@ -361,7 +382,9 @@ class MainFrame(tk.Frame):
         self.record_dir_entry['state'] = 'normal'
         self.record_name_entry['state'] = 'normal'
         self.record_number_entry['state'] = 'normal'
-        self.nidaq_task.stop()
+        self.nidaq_task_ai.stop()
+        self.nidaq_task_do.write([0, 0, 0, 0], auto_start=True)
+        self.nidaq_task_do.stop()
 
         if self.record_on.get():
             try:
