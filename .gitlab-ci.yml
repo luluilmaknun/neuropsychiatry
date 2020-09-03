@@ -24,7 +24,7 @@ pytest:
 build:
   stage: Build
   script:
-    - pyinstaller --onedir --windowed src/ui/main.py
+    - pyinstaller -F --add-data "src/media/bleep.mp3;." --onedir --windowed src/ui/main.py
   artifacts:
     paths:
       - dist
