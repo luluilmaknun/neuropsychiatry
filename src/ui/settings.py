@@ -1,25 +1,30 @@
+# Import modules
 import json
 import tkinter as tk
 import tkinter.filedialog as tk_fd
 
 
 class SettingsFrame(tk.Toplevel):
+    """
+        SettingsFrame contains all variables and functionalities to change settings
+    """
     def __init__(self, root, settings_dict):
+        # Init settings window
         self.root = root
         self.root.title("Settings")
         self.settings_dict = settings_dict
         self.conditions = self.settings_dict['conditions']
-        self.vals = []
+        self.vals = []  # 2D array contains conditions variables values
 
+        # FRAMING
         self.top_frame = tk.Frame(self.root)
         self.top_frame.grid(row=0, column=0, padx=5, pady=12, sticky=tk.W)
-
-        self.btn_add_condition = tk.Button(self.root, text='Add Condition', command=self.add_condition)
-        self.btn_add_condition.grid(row=1, column=0, sticky=tk.E, padx=15)
-
         self.conditions_frame = tk.Frame(self.root, highlightbackground='black', highlightthickness=1)
         self.conditions_frame.grid(row=2, column=0, padx=15, pady=12, ipady=10)
+        self.button_frame = tk.Frame(self.root)
+        self.button_frame.grid(row=3, column=0, padx=5, pady=12)
 
+        # Init Elements in Top Frames
         # Length of trial
         tk.Label(self.top_frame, text="Length of Trial", font=('Arial', 11)) \
             .grid(row=2, column=0, sticky=tk.W, padx=12, pady=(6, 0))
@@ -53,29 +58,29 @@ class SettingsFrame(tk.Toplevel):
                                               textvariable=self.num_of_trials)
         self.num_of_trials_entry.grid(row=6, rowspan=2, column=1, padx=5)
 
-        # Buttons
-        self.button_frame = tk.Frame(self.root)
-        self.button_frame.grid(row=3, column=0, padx=5, pady=12)
-
-        self.save_button = tk.Button(self.button_frame, width=13, text="Export Settings",
+        # Init elements in button frame; export, import, save, close
+        self.export_button = tk.Button(self.button_frame, width=13, text="Export Settings",
                                      command=self.export_settings)
-        self.save_button.grid(row=0, column=0, padx=5)
-
-        self.save_button = tk.Button(self.button_frame, width=13, text="Import Settings",
+        self.export_button.grid(row=0, column=0, padx=5)
+        self.import_button = tk.Button(self.button_frame, width=13, text="Import Settings",
                                      command=self.import_settings)
-        self.save_button.grid(row=0, column=1, padx=5)
-
+        self.import_button.grid(row=0, column=1, padx=5)
         self.save_button = tk.Button(self.button_frame, width=13, text="Save Changes",
                                      command=self.save_settings)
         self.save_button.grid(row=0, column=2, padx=5)
-
-        self.save_button = tk.Button(self.button_frame, width=13, text="Close",
+        self.close_button = tk.Button(self.button_frame, width=13, text="Close",
                                      command=self.close)
-        self.save_button.grid(row=0, column=3, padx=5)
+        self.close_button.grid(row=0, column=3, padx=5)
 
+        # Init elements in condition frame
+        self.btn_add_condition = tk.Button(self.root, text='Add Condition', command=self.add_condition)
+        self.btn_add_condition.grid(row=1, column=0, sticky=tk.E, padx=15)
         self.configure_condition_table()
 
     def configure_condition_table(self):
+        """
+            Method to configure condition table and load its values based on array self.condition
+        """
         self.fields = ['Condition', 'Delay (s)',
                        'Target Frequency (Hz)',
                        'Cursor Pertubation Frequency (Hz)',
@@ -88,10 +93,12 @@ class SettingsFrame(tk.Toplevel):
         self.fields_key = list(self.conditions[0].keys())
         self.num_of_conditions = len(self.conditions)
 
+        # Set header row
         for i in range(len(self.fields)):
-            tk.Label(self.conditions_frame, text=self.fields[i], wraplength=70, width=9).grid(row=0, column=i, sticky=tk.W,
-                                                                                              padx=5, pady=5)
+            tk.Label(self.conditions_frame, text=self.fields[i], wraplength=70, width=9) \
+                .grid(row=0, column=i, sticky=tk.W, padx=5, pady=5)
 
+        # Set condition tables values
         for i in range(self.num_of_conditions):
             self.vals.append([])
             for j in range(len(self.fields)):
@@ -103,13 +110,17 @@ class SettingsFrame(tk.Toplevel):
                     val.set(self.conditions[i][self.fields_key[j]])
                     ent = tk.Entry(self.conditions_frame, textvariable=val, width=8)
                     ent.grid(row=i + 1, column=j, pady=5)
-                    self.vals[i].append(val)
+                    self.vals[i].append(val)        # Store tables values in self.vals
 
+        # Generate ordered number of condition
         for i in range(self.num_of_conditions):
             tk.Button(self.conditions_frame, text='x', command=(lambda: self.delete_condition(i + 1))) \
                 .grid(row=i + 1, column= len(self.fields)+1, padx=10, ipadx=5)
 
     def save_settings(self):
+        """
+            Method for save current settings and store it in variable self.settings
+        """
         self.settings_dict['num_of_conditions'] = self.num_of_conditions
         self.settings_dict['length_of_trial'] = self.length_of_trial.get()
         self.settings_dict['size_cursor_target'] = self.size_cursor_target.get()
@@ -127,13 +138,24 @@ class SettingsFrame(tk.Toplevel):
         self.settings_dict['conditions'] = self.conditions
 
     def get_settings(self):
+        """
+            Method getter settings. Will return current saved settings
+        """
         return self.settings_dict
 
     def waiting(self):
+        """
+            Keep the settings frame open until being destroyed/closed by user
+
+            :return: current saved settings
+        """
         self.root.wait_window()
         return self.settings_dict
 
     def add_condition(self):
+        """
+            Event handling for adding new condition row
+        """
         self.num_of_conditions += 1
         self.vals.append([])
 
@@ -152,6 +174,11 @@ class SettingsFrame(tk.Toplevel):
             .grid(row=self.num_of_conditions, column=len(self.fields) + 1, padx=10, ipadx=5)
 
     def delete_condition(self, row):
+        """
+            Event handling for removing selected row
+
+            :param row: integer of intended row to be deleted
+        """
         l = list(self.conditions_frame.grid_slaves(row=self.num_of_conditions))
         self.num_of_conditions -= 1
 
@@ -164,7 +191,12 @@ class SettingsFrame(tk.Toplevel):
             w.destroy()
 
     def import_settings(self):
-        filename = tk_fd.askopenfilename()
+        """
+            Import chosen settings file in json
+        """
+        # Popup dialog, ask for json files
+        filename = tk_fd.askopenfilename(defaultextension='.json', filetypes=[("json files", '*.json')],
+                                         title="Choose filename")
         with open(filename, 'r') as f_im:
             settings_dict = json.load(f_im)
 
@@ -178,6 +210,10 @@ class SettingsFrame(tk.Toplevel):
             self.root.lift()
 
     def export_settings(self):
+        """
+            Export current saved settings in json
+        """
+        # Popup dialog, ask for target filename
         filename = tk_fd.asksaveasfilename(defaultextension='.json', filetypes=[("json files", '*.json')],
                                            title="Choose filename")
         with open(filename, 'w') as f_ex:
@@ -185,4 +221,7 @@ class SettingsFrame(tk.Toplevel):
             f_ex.write(json.dumps(self.settings_dict, indent=4))
 
     def close(self):
+        """
+            Destroy/Close settings frame/window
+        """
         self.root.destroy()
