@@ -139,10 +139,10 @@ class MainFrame(tk.Frame):
                 ttl_value_bin_string = '{0:04b}'.format(self.list_counter + 1)
                 self.nidaq_task_do.write(
                     [
-                        ttl_value_bin_string[0],
-                        ttl_value_bin_string[1],
-                        ttl_value_bin_string[2],
-                        ttl_value_bin_string[3]
+                        int(ttl_value_bin_string[0]),
+                        int(ttl_value_bin_string[1]),
+                        int(ttl_value_bin_string[2]),
+                        int(ttl_value_bin_string[3])
                     ],
                     auto_start=True)
 
@@ -170,7 +170,7 @@ class MainFrame(tk.Frame):
             self.set_visibility(True, True)
             self.playground.hide_score()
             self.next_phase_time = self.settings['length_of_trial'] * constants.CLOCK_FREQUENCY
-            playsound("bleep.mp3", False) # playsound("..\\media\\bleep.mp3"); if not building app
+            playsound("bleep.mp3", False) # playsound("..\\media\\bleep.mp3", False); if not building app
         elif self.current_phase == constants.SCORE_PHASE:
             self.set_visibility(False, False)
             self.is_target_moved = False
